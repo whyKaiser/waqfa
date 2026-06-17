@@ -1,0 +1,242 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'result_screen.dart';
+import 'connect_screen.dart';
+
+class InputScreen extends StatefulWidget {
+  const InputScreen({super.key});
+
+  @override
+  State<InputScreen> createState() => _InputScreenState();
+}
+
+class _InputScreenState extends State<InputScreen> {
+  final _salaryCtrl = TextEditingController();
+  final _fixedCtrl = TextEditingController();
+  final _variableCtrl = TextEditingController();
+  final _bnplCtrl = TextEditingController();
+  final _concernCtrl = TextEditingController();
+
+  Future<void> _connectAccounts() async {
+    HapticFeedback.lightImpact();
+    final data = await Navigator.push<Map<String, double>>(
+      context,
+      MaterialPageRoute(builder: (_) => const ConnectScreen()),
+    );
+    if (data == null || !mounted) return;
+    setState(() {
+      _salaryCtrl.text = (data['salary'] ?? 0).toInt().toString();
+      _fixedCtrl.text = (data['fixed'] ?? 0).toInt().toString();
+      _variableCtrl.text = (data['variable'] ?? 0).toInt().toString();
+      _bnplCtrl.text = (data['bnpl'] ?? 0).toInt().toString();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم استيراد بياناتك — راجعها واضغط حلّل')),
+    );
+  }
+
+  void _analyze() {
+    final salary = double.tryParse(_salaryCtrl.text) ?? 0;
+    if (salary == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أدخل راتبك أولاً')),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ResultScreen(
+          salary: salary,
+          fixed: double.tryParse(_fixedCtrl.text) ?? 0,
+          variable: double.tryParse(_variableCtrl.text) ?? 0,
+          bnpl: double.tryParse(_bnplCtrl.text) ?? 0,
+          concern: _concernCtrl.text,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('بياناتك المالية'),
+        centerTitle: true,
+      ),
+      body: Directionality(
+        textDirection: TextDirection.rtl,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ربط تلقائي عبر المصرفية المفتوحة
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _connectAccounts,
+                  icon: const Icon(Icons.sync_rounded, size: 18),
+                  label: const Text('اربط حساباتك تلقائياً (مصرفية مفتوحة)'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF48CAE4),
+                    side: const BorderSide(color: Color(0xFF48CAE4), width: 1),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Row(children: [
+                Expanded(child: Divider(color: Colors.white12)),
+                Padding(padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('أو أدخل يدوياً', style: TextStyle(color: Colors.white24, fontSize: 12))),
+                Expanded(child: Divider(color: Colors.white12)),
+              ]),
+              const SizedBox(height: 16),
+              _InputField(
+                controller: _salaryCtrl,
+                label: 'الراتب الشهري',
+                hint: 'مثال: 8000',
+                icon: Icons.account_balance_wallet_outlined,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _InputField(
+                      controller: _fixedCtrl,
+                      label: 'مصاريف ثابتة',
+                      hint: 'إيجار، فواتير...',
+                      icon: Icons.home_outlined,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _InputField(
+                      controller: _variableCtrl,
+                      label: 'مصاريف متغيرة',
+                      hint: 'أكل، تسوق...',
+                      icon: Icons.shopping_bag_outlined,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _InputField(
+                controller: _bnplCtrl,
+                label: 'أقساط BNPL (تمارا، تابي...)',
+                hint: 'مثال: 1500',
+                icon: Icons.credit_card_outlined,
+                highlight: true,
+              ),
+              const SizedBox(height: 16),
+              _InputField(
+                controller: _concernCtrl,
+                label: 'أي قلق مالي؟ (اختياري)',
+                hint: 'مثال: خايف ما أكفي آخر الشهر...',
+                icon: Icons.chat_bubble_outline,
+                isNumber: false,
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _analyze,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C63FF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'حلّل وضعي',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InputField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData icon;
+  final bool isNumber;
+  final bool highlight;
+
+  const _InputField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.icon,
+    this.isNumber = true,
+    this.highlight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: highlight
+              ? const Color(0xFF6C63FF).withOpacity(0.4)
+              : Colors.white.withOpacity(0.08),
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.white38),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: Colors.white38),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            textAlign: TextAlign.right,
+            keyboardType: isNumber
+                ? const TextInputType.numberWithOptions(decimal: true)
+                : TextInputType.text,
+            inputFormatters: isNumber
+                ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+                : null,
+            style: const TextStyle(fontSize: 18, color: Colors.white),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(color: Colors.white24, fontSize: 14),
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              suffix: isNumber
+                  ? const Text(
+                      'ريال',
+                      style: TextStyle(fontSize: 12, color: Colors.white38),
+                    )
+                  : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
