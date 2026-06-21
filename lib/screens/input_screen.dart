@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'result_screen.dart';
 import 'connect_screen.dart';
+import 'receipt_scan_screen.dart';
 
 class InputScreen extends StatefulWidget {
   const InputScreen({super.key});
@@ -32,6 +33,24 @@ class _InputScreenState extends State<InputScreen> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تم استيراد بياناتك — راجعها واضغط حلّل')),
+    );
+  }
+
+  Future<void> _scanReceipt() async {
+    HapticFeedback.lightImpact();
+    final data = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (_) => const ReceiptScanScreen()),
+    );
+    if (data == null || !mounted) return;
+    final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+    if (amount <= 0) return;
+    final isBnpl = data['isBnpl'] == true;
+    final ctrl = isBnpl ? _bnplCtrl : _variableCtrl;
+    final current = double.tryParse(ctrl.text) ?? 0;
+    setState(() => ctrl.text = (current + amount).toInt().toString());
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('أُضيف ${amount.toInt()} ريال إلى ${isBnpl ? "أقساط BNPL" : "المصاريف المتغيرة"}')),
     );
   }
 
@@ -83,6 +102,21 @@ class _InputScreenState extends State<InputScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF48CAE4),
                     side: const BorderSide(color: Color(0xFF48CAE4), width: 1),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _scanReceipt,
+                  icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                  label: const Text('صوّر فاتورة وأضِفها تلقائياً'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6BCB77),
+                    side: const BorderSide(color: Color(0xFF6BCB77), width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),

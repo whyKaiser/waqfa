@@ -4,6 +4,53 @@ import 'package:http/http.dart' as http;
 import 'secrets.dart';
 import 'profile_service.dart';
 
+/// نتيجة تحليل فاتورة مصوّرة.
+class ReceiptResult {
+  final String merchant;
+  final double total;
+  final String category;
+  final bool isBnpl;
+  final String note;
+  final bool ok;
+
+  ReceiptResult({
+    required this.merchant,
+    required this.total,
+    required this.category,
+    required this.isBnpl,
+    required this.note,
+    this.ok = true,
+  });
+
+  factory ReceiptResult.error(String msg) => ReceiptResult(
+        merchant: '', total: 0, category: '', isBnpl: false, note: msg, ok: false,
+      );
+
+  /// يستخرج JSON من رد النموذج بتسامح (يتجاهل أي نص حوله).
+  factory ReceiptResult.parse(String content) {
+    try {
+      final start = content.indexOf('{');
+      final end = content.lastIndexOf('}');
+      if (start == -1 || end <= start) return ReceiptResult.error('ما قدرت أقرأ الفاتورة. جرّب صورة أوضح.');
+      final j = jsonDecode(content.substring(start, end + 1)) as Map<String, dynamic>;
+      double parseNum(dynamic v) {
+        if (v is num) return v.toDouble();
+        if (v is String) return double.tryParse(v.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+        return 0;
+      }
+      return ReceiptResult(
+        merchant: (j['merchant'] ?? '').toString(),
+        total: parseNum(j['total']),
+        category: (j['category'] ?? '').toString(),
+        isBnpl: j['is_bnpl'] == true || j['is_bnpl'].toString() == 'true',
+        note: (j['note'] ?? '').toString(),
+      );
+    } catch (_) {
+      return ReceiptResult.error('ما قدرت أقرأ الفاتورة بوضوح. جرّب صورة أوضح وإضاءة أحسن.');
+    }
+  }
+}
+
 class ClaudeService {
   static const String _apiKey = Secrets.groqApiKey;
 
@@ -76,6 +123,52 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
       debugPrint('Exception: $e');
       return _localFallback(salary: salary, bnpl: bnpl, remaining: remaining,
           bnplRatio: bnplRatio, totalRatio: totalRatio, concern: concern);
+    }
+  }
+
+  // تحليل صورة فاتورة عبر نموذج الرؤية — استخراج وتصنيف وتقييم.
+  static Future<ReceiptResult> analyzeReceipt(String base64Jpeg) async {
+    const prompt =
+        'هذه صورة فاتورة أو إيصال. استخرج منها البيانات وأعطِ النتيجة بصيغة JSON فقط '
+        'بهذا الشكل بالضبط بدون أي نص خارج الأقواس: '
+        '{"merchant":"اسم المتجر","total":الإجمالي كرقم,"category":"تصنيف الصرف مثل طعام أو تسوق أو فواتير",'
+        '"is_bnpl":true أو false إن كانت تقسيط مثل تمارا أو تابي,"note":"ملاحظة قصيرة بالعربية عن هذا الصرف ونصيحة واحدة"}';
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+          'temperature': 0.2,
+          'max_tokens': 400,
+          'messages': [
+            {
+              'role': 'user',
+              'content': [
+                {'type': 'text', 'text': prompt},
+                {
+                  'type': 'image_url',
+                  'image_url': {'url': 'data:image/jpeg;base64,$base64Jpeg'}
+                },
+              ],
+            }
+          ],
+        }),
+      );
+      debugPrint('Receipt status: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final content = data['choices'][0]['message']['content'] as String? ?? '';
+        return ReceiptResult.parse(content);
+      }
+      debugPrint('Receipt error: ${response.body}');
+      return ReceiptResult.error('تعذّر تحليل الفاتورة (${response.statusCode}). حاول بصورة أوضح.');
+    } catch (e) {
+      debugPrint('Receipt exception: $e');
+      return ReceiptResult.error('تعذّر الاتصال. تأكد من الإنترنت وحاول مرة ثانية.');
     }
   }
 
