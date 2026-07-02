@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
-import '../services/claude_service.dart';
+import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../services/notification_service.dart';
 import 'simulator_screen.dart';
@@ -101,7 +101,7 @@ class _ResultScreenState extends State<ResultScreen>
   }
 
   Future<void> _fetchAnalysis() async {
-    final result = await ClaudeService.analyzeFinances(
+    final result = await AiService.analyzeFinances(
       salary: widget.salary,
       fixed: widget.fixed,
       variable: widget.variable,

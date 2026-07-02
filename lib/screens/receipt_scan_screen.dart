@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import '../services/claude_service.dart';
+import '../services/ai_service.dart';
 
 /// تصوير فاتورة وتحليلها بالرؤية — استخراج المبلغ والتصنيف ونصيحة،
 /// مع إمكانية إضافة المبلغ مباشرة لمصاريفك أو أقساطك.
@@ -28,7 +28,7 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
       final bytes = await file.readAsBytes();
       if (!mounted) return;
       setState(() { _image = bytes; _result = null; _loading = true; });
-      final res = await ClaudeService.analyzeReceipt(base64Encode(bytes));
+      final res = await AiService.analyzeReceipt(base64Encode(bytes));
       if (!mounted) return;
       HapticFeedback.lightImpact();
       setState(() { _result = res; _loading = false; });

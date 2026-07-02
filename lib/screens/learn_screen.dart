@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/claude_service.dart';
+import '../services/ai_service.dart';
 
 /// التعليم المالي التفاعلي — يشرح المصطلحات ببساطة عبر الذكاء الاصطناعي.
 class LearnScreen extends StatelessWidget {
@@ -102,7 +102,7 @@ class _TermSheetState extends State<_TermSheet> {
   }
 
   Future<void> _fetch() async {
-    final r = await ClaudeService.explainTerm(widget.term);
+    final r = await AiService.explainTerm(widget.term);
     if (mounted) setState(() => _text = r);
   }
 

@@ -51,7 +51,7 @@ class ReceiptResult {
   }
 }
 
-class ClaudeService {
+class AiService {
   static const String _apiKey = Secrets.groqApiKey;
 
   static Future<String> analyzeFinances({
