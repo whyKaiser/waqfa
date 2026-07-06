@@ -30,6 +30,7 @@ class _ResultScreenState extends State<ResultScreen>
     with SingleTickerProviderStateMixin {
   String? _aiAnalysis;
   bool _loading = true;
+  TrendResult? _trend;
   late AnimationController _animController;
   late Animation<double> _animation;
 
@@ -45,7 +46,22 @@ class _ResultScreenState extends State<ResultScreen>
     _animation = CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic);
     _calculate();
     _animController.forward();
+    _fetchTrend(); // يقرأ السجل السابق قبل ما نحفظ التحليل الحالي
     _fetchAnalysis();
+  }
+
+  Future<void> _fetchTrend() async {
+    final trend = await StorageService.analyzeTrend();
+    if (mounted) setState(() => _trend = trend);
+  }
+
+  /// درجة مخاطر مركّبة (0-100) توزّن 3 عوامل قابلة للتفسير:
+  /// 40% أقساط BNPL، 40% إجمالي المصاريف، 20% اتجاه آخر 3 تحليلات.
+  /// لا تغيّر تصنيف آمن/تحذير/خطر — مؤشر تقني إضافي شفّاف يُعرض للمستخدم واللجنة.
+  int get _compositeScore {
+    final trendDelta = (_trend?.worsening ?? false) ? _trend!.deltaPct : 0;
+    final score = (_bnplRatio * 0.4) + (_totalRatio * 0.4) + (trendDelta.clamp(0, 100) * 0.2);
+    return score.round().clamp(0, 100);
   }
 
   @override
@@ -173,6 +189,38 @@ class _ResultScreenState extends State<ResultScreen>
                   progress: _animation.value,
                 ),
               ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.analytics_outlined, size: 14, color: Colors.white38),
+                  const SizedBox(width: 6),
+                  Text('درجة المخاطر المركّبة: $_compositeScore/100',
+                      style: const TextStyle(fontSize: 12, color: Colors.white54, fontWeight: FontWeight.w500)),
+                ]),
+              ),
+              if (_trend != null && _trend!.worsening) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFB347).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFFFB347).withOpacity(0.3)),
+                  ),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Icon(Icons.trending_up_rounded, color: Color(0xFFFFB347), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(_trend!.message,
+                        style: const TextStyle(fontSize: 13, color: Colors.white70, height: 1.6))),
+                  ]),
+                ),
+              ],
               const SizedBox(height: 20),
               Row(
                 children: [
