@@ -17,6 +17,17 @@ class _InputScreenState extends State<InputScreen> {
   final _variableCtrl = TextEditingController();
   final _bnplCtrl = TextEditingController();
   final _concernCtrl = TextEditingController();
+  bool _navigating = false; // يمنع فتح شاشتين نتيجة بنقرة مزدوجة سريعة
+
+  @override
+  void dispose() {
+    _salaryCtrl.dispose();
+    _fixedCtrl.dispose();
+    _variableCtrl.dispose();
+    _bnplCtrl.dispose();
+    _concernCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _connectAccounts() async {
     HapticFeedback.lightImpact();
@@ -54,7 +65,8 @@ class _InputScreenState extends State<InputScreen> {
     );
   }
 
-  void _analyze() {
+  Future<void> _analyze() async {
+    if (_navigating) return;
     final salary = double.tryParse(_salaryCtrl.text) ?? 0;
     if (salary == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -62,7 +74,8 @@ class _InputScreenState extends State<InputScreen> {
       );
       return;
     }
-    Navigator.push(
+    _navigating = true;
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ResultScreen(
@@ -74,6 +87,7 @@ class _InputScreenState extends State<InputScreen> {
         ),
       ),
     );
+    _navigating = false;
   }
 
   @override

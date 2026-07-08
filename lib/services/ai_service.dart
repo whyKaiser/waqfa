@@ -103,7 +103,8 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
           ],
           'max_tokens': 350,
         }),
-      );
+        // شبكة معلّقة (تتصل ولا ترد) ما ترمي استثناء — بدون مهلة يلف السبنر للأبد
+      ).timeout(const Duration(seconds: 12));
 
       debugPrint('Groq status: ${response.statusCode}');
       debugPrint('Groq body: ${response.body}');
@@ -157,7 +158,8 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
             }
           ],
         }),
-      );
+        // مهلة أطول: رفع صورة أبطأ من طلب نصي
+      ).timeout(const Duration(seconds: 25));
       debugPrint('Receipt status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -199,7 +201,7 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
           ],
           'max_tokens': 300,
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final content = data['choices'][0]['message']['content'];
@@ -221,6 +223,10 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
           'الادخار يعني تحجز جزء من دخلك قبل ما تصرفه، حتى لو مبلغ بسيط شهرياً. القاعدة الذهبية: ادفع لنفسك أولاً — حوّل مبلغ ثابت لحساب توفير أول ما يدخل الراتب.',
       'الاستثمار':
           'الاستثمار يعني تشغّل فلوسك لتنمو مع الوقت بدل ما تبقى ساكنة، مثل الأسهم أو الصناديق. فيه مخاطرة، فابدأ بمبلغ صغير تقدر تتحمّل خسارته وتعلّم بالتدريج.',
+      'الميزانية الشخصية':
+          'الميزانية الشخصية يعني تعرف وين تروح فلوسك قبل ما تروح — تقسّم راتبك أول الشهر: التزامات ثابتة، مصاريف يومية، وادخار. مثال بسيط: قاعدة 50/30/20 — نصف الراتب للضروريات، 30% لرغباتك، و20% توفير وسداد ديون.',
+      'نسبة الدين إلى الدخل':
+          'نسبة الدين إلى الدخل تقيس كم من راتبك يروح لسداد الأقساط والديون كل شهر. مثال: راتبك 8000 وأقساطك 2000 يعني نسبتك 25%. كل ما زادت النسبة عن الثلث، صار وضعك أخطر وقلّت قدرتك على التحمّل لو صار طارئ.',
     };
     return fallbacks[term] ??
         'مصطلح مالي مهم. تعذّر جلب الشرح الآن — تأكد من اتصالك بالإنترنت وحاول مرة ثانية.';

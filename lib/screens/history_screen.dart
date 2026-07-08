@@ -55,6 +55,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.white38),
             onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: AlertDialog(
+                    backgroundColor: const Color(0xFF1A1A2E),
+                    title: const Text('حذف كل السجل؟', style: TextStyle(color: Colors.white, fontSize: 17)),
+                    content: const Text('راح تفقد كل تحليلاتك السابقة ورسم الاتجاه. ما تقدر تتراجع.',
+                        style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.6)),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('إلغاء', style: TextStyle(color: Colors.white54)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('حذف', style: TextStyle(color: Color(0xFFFF6B6B))),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+              if (confirm != true) return;
               await StorageService.clearAll();
               _load();
             },
