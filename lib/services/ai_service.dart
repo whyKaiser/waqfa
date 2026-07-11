@@ -23,7 +23,12 @@ class ReceiptResult {
   });
 
   factory ReceiptResult.error(String msg) => ReceiptResult(
-        merchant: '', total: 0, category: '', isBnpl: false, note: msg, ok: false,
+        merchant: '',
+        total: 0,
+        category: '',
+        isBnpl: false,
+        note: msg,
+        ok: false,
       );
 
   /// يستخرج JSON من رد النموذج بتسامح (يتجاهل أي نص حوله).
@@ -31,13 +36,17 @@ class ReceiptResult {
     try {
       final start = content.indexOf('{');
       final end = content.lastIndexOf('}');
-      if (start == -1 || end <= start) return ReceiptResult.error('ما قدرت أقرأ الفاتورة. جرّب صورة أوضح.');
-      final j = jsonDecode(content.substring(start, end + 1)) as Map<String, dynamic>;
+      if (start == -1 || end <= start)
+        return ReceiptResult.error('ما قدرت أقرأ الفاتورة. جرّب صورة أوضح.');
+      final j =
+          jsonDecode(content.substring(start, end + 1)) as Map<String, dynamic>;
       double parseNum(dynamic v) {
         if (v is num) return v.toDouble();
-        if (v is String) return double.tryParse(v.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+        if (v is String)
+          return double.tryParse(v.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
         return 0;
       }
+
       return ReceiptResult(
         merchant: (j['merchant'] ?? '').toString(),
         total: parseNum(j['total']),
@@ -46,7 +55,8 @@ class ReceiptResult {
         note: (j['note'] ?? '').toString(),
       );
     } catch (_) {
-      return ReceiptResult.error('ما قدرت أقرأ الفاتورة بوضوح. جرّب صورة أوضح وإضاءة أحسن.');
+      return ReceiptResult.error(
+          'ما قدرت أقرأ الفاتورة بوضوح. جرّب صورة أوضح وإضاءة أحسن.');
     }
   }
 }
@@ -62,12 +72,14 @@ class AiService {
     String concern = '',
   }) async {
     final remaining = salary - fixed - variable - bnpl;
-    final bnplRatio = ((bnpl / salary) * 100).round();
-    final totalRatio = (((fixed + variable + bnpl) / salary) * 100).round();
+    final safeSalary = salary > 0 ? salary : 1;
+    final bnplRatio = ((bnpl / safeSalary) * 100).round();
+    final totalRatio = (((fixed + variable + bnpl) / safeSalary) * 100).round();
 
     final profileCtx = (await ProfileService.load()).toPromptContext();
 
-    final prompt = '''أنت مستشار مالي سعودي متخصص في حماية الشباب من الديون. حلل الوضع المالي التالي وأعطِ تقييماً شخصياً باللغة العربية العامية السعودية البسيطة.
+    final prompt =
+        '''أنت مستشار مالي سعودي متخصص في حماية الشباب من الديون. حلل الوضع المالي التالي وأعطِ تقييماً شخصياً باللغة العربية العامية السعودية البسيطة.
 
 البيانات:
 - الراتب الشهري: $salary ريال
@@ -82,29 +94,31 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
 اكتب تحليلاً مفيداً بالعربية الفصحى البسيطة (4-5 جمل فقط). ابدأ بأهم ملاحظة على أرقامه، راعِ أهدافه وفئته العمرية ونوع دخله في نصيحتك، ثم إذا ذكر قلقاً مالياً قدّم له خطوات عملية محددة تحقق هدفه مع وضعه الحالي — كم يوفر شهرياً، متى يصل للهدف، وكيف يعدّل مصاريفه. بدون مقدمات أو تحيات، فقرة واحدة متصلة.''';
 
     try {
-      final response = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          'model': 'llama-3.3-70b-versatile',
-          'temperature': 0.6,
-          'messages': [
-            {
-              'role': 'system',
-              'content':
-                  'أنت مستشار مالي سعودي. تكتب فقرة واحدة قصيرة (4-5 جمل) بالعربية العامية السعودية البسيطة. '
-                      'ممنوع منعاً باتاً: أي حسابات رياضية، أرقام خطوة بخطوة، قوائم مرقمة، عناوين، أو مقدمات وتحيات. '
-                      'فقط نص نصيحة متصل ومباشر.'
+      final response = await http
+          .post(
+            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_apiKey',
             },
-            {'role': 'user', 'content': prompt}
-          ],
-          'max_tokens': 350,
-        }),
-        // شبكة معلّقة (تتصل ولا ترد) ما ترمي استثناء — بدون مهلة يلف السبنر للأبد
-      ).timeout(const Duration(seconds: 12));
+            body: jsonEncode({
+              'model': 'llama-3.3-70b-versatile',
+              'temperature': 0.6,
+              'messages': [
+                {
+                  'role': 'system',
+                  'content':
+                      'أنت مستشار مالي سعودي. تكتب فقرة واحدة قصيرة (4-5 جمل) بالعربية العامية السعودية البسيطة. '
+                          'ممنوع منعاً باتاً: أي حسابات رياضية، أرقام خطوة بخطوة، قوائم مرقمة، عناوين، أو مقدمات وتحيات. '
+                          'فقط نص نصيحة متصل ومباشر.'
+                },
+                {'role': 'user', 'content': prompt}
+              ],
+              'max_tokens': 350,
+            }),
+            // شبكة معلّقة (تتصل ولا ترد) ما ترمي استثناء — بدون مهلة يلف السبنر للأبد
+          )
+          .timeout(const Duration(seconds: 12));
 
       debugPrint('Groq status: ${response.statusCode}');
       debugPrint('Groq body: ${response.body}');
@@ -113,17 +127,32 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
         final data = jsonDecode(response.body);
         final content = data['choices'][0]['message']['content'];
         if (content is String && content.trim().isNotEmpty) return content;
-        return _localFallback(salary: salary, bnpl: bnpl, remaining: remaining,
-            bnplRatio: bnplRatio, totalRatio: totalRatio, concern: concern);
+        return _localFallback(
+            salary: salary,
+            bnpl: bnpl,
+            remaining: remaining,
+            bnplRatio: bnplRatio,
+            totalRatio: totalRatio,
+            concern: concern);
       } else {
         debugPrint('Groq error: ${response.body}');
-        return _localFallback(salary: salary, bnpl: bnpl, remaining: remaining,
-            bnplRatio: bnplRatio, totalRatio: totalRatio, concern: concern);
+        return _localFallback(
+            salary: salary,
+            bnpl: bnpl,
+            remaining: remaining,
+            bnplRatio: bnplRatio,
+            totalRatio: totalRatio,
+            concern: concern);
       }
     } catch (e) {
       debugPrint('Exception: $e');
-      return _localFallback(salary: salary, bnpl: bnpl, remaining: remaining,
-          bnplRatio: bnplRatio, totalRatio: totalRatio, concern: concern);
+      return _localFallback(
+          salary: salary,
+          bnpl: bnpl,
+          remaining: remaining,
+          bnplRatio: bnplRatio,
+          totalRatio: totalRatio,
+          concern: concern);
     }
   }
 
@@ -135,42 +164,47 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
         '{"merchant":"اسم المتجر","total":الإجمالي كرقم,"category":"تصنيف الصرف مثل طعام أو تسوق أو فواتير",'
         '"is_bnpl":true أو false إن كانت تقسيط مثل تمارا أو تابي,"note":"ملاحظة قصيرة بالعربية عن هذا الصرف ونصيحة واحدة"}';
     try {
-      final response = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
-          'temperature': 0.2,
-          'max_tokens': 400,
-          'messages': [
-            {
-              'role': 'user',
-              'content': [
-                {'type': 'text', 'text': prompt},
+      final response = await http
+          .post(
+            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_apiKey',
+            },
+            body: jsonEncode({
+              'model': 'meta-llama/llama-4-scout-17b-16e-instruct',
+              'temperature': 0.2,
+              'max_tokens': 400,
+              'messages': [
                 {
-                  'type': 'image_url',
-                  'image_url': {'url': 'data:image/jpeg;base64,$base64Jpeg'}
-                },
+                  'role': 'user',
+                  'content': [
+                    {'type': 'text', 'text': prompt},
+                    {
+                      'type': 'image_url',
+                      'image_url': {'url': 'data:image/jpeg;base64,$base64Jpeg'}
+                    },
+                  ],
+                }
               ],
-            }
-          ],
-        }),
-        // مهلة أطول: رفع صورة أبطأ من طلب نصي
-      ).timeout(const Duration(seconds: 25));
+            }),
+            // مهلة أطول: رفع صورة أبطأ من طلب نصي
+          )
+          .timeout(const Duration(seconds: 25));
       debugPrint('Receipt status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final content = data['choices'][0]['message']['content'] as String? ?? '';
+        final content =
+            data['choices'][0]['message']['content'] as String? ?? '';
         return ReceiptResult.parse(content);
       }
       debugPrint('Receipt error: ${response.body}');
-      return ReceiptResult.error('تعذّر تحليل الفاتورة (${response.statusCode}). حاول بصورة أوضح.');
+      return ReceiptResult.error(
+          'تعذّر تحليل الفاتورة (${response.statusCode}). حاول بصورة أوضح.');
     } catch (e) {
       debugPrint('Receipt exception: $e');
-      return ReceiptResult.error('تعذّر الاتصال. تأكد من الإنترنت وحاول مرة ثانية.');
+      return ReceiptResult.error(
+          'تعذّر الاتصال. تأكد من الإنترنت وحاول مرة ثانية.');
     }
   }
 
@@ -181,27 +215,29 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
         'في 3-4 جمل قصيرة فقط، مع مثال واقعي واحد من الحياة اليومية. '
         'بدون مقدمات ولا عناوين ولا قوائم — فقرة واحدة متصلة.';
     try {
-      final response = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          'model': 'llama-3.3-70b-versatile',
-          'temperature': 0.6,
-          'messages': [
-            {
-              'role': 'system',
-              'content':
-                  'أنت معلّم مالي سعودي تشرح المصطلحات ببساطة شديدة لمبتدئين. '
-                      'فقرة واحدة قصيرة، بدون حسابات أو قوائم أو عناوين.'
+      final response = await http
+          .post(
+            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $_apiKey',
             },
-            {'role': 'user', 'content': prompt}
-          ],
-          'max_tokens': 300,
-        }),
-      ).timeout(const Duration(seconds: 10));
+            body: jsonEncode({
+              'model': 'llama-3.3-70b-versatile',
+              'temperature': 0.6,
+              'messages': [
+                {
+                  'role': 'system',
+                  'content':
+                      'أنت معلّم مالي سعودي تشرح المصطلحات ببساطة شديدة لمبتدئين. '
+                          'فقرة واحدة قصيرة، بدون حسابات أو قوائم أو عناوين.'
+                },
+                {'role': 'user', 'content': prompt}
+              ],
+              'max_tokens': 300,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final content = data['choices'][0]['message']['content'];

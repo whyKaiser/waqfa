@@ -25,28 +25,28 @@ class AnalysisRecord {
   });
 
   Map<String, dynamic> toJson() => {
-    'date': date.toIso8601String(),
-    'salary': salary,
-    'fixed': fixed,
-    'variable': variable,
-    'bnpl': bnpl,
-    'totalRatio': totalRatio,
-    'bnplRatio': bnplRatio,
-    'riskLevel': riskLevel,
-    'aiAnalysis': aiAnalysis,
-  };
+        'date': date.toIso8601String(),
+        'salary': salary,
+        'fixed': fixed,
+        'variable': variable,
+        'bnpl': bnpl,
+        'totalRatio': totalRatio,
+        'bnplRatio': bnplRatio,
+        'riskLevel': riskLevel,
+        'aiAnalysis': aiAnalysis,
+      };
 
   factory AnalysisRecord.fromJson(Map<String, dynamic> j) => AnalysisRecord(
-    date: DateTime.parse(j['date']),
-    salary: j['salary'],
-    fixed: j['fixed'],
-    variable: j['variable'],
-    bnpl: j['bnpl'],
-    totalRatio: j['totalRatio'],
-    bnplRatio: j['bnplRatio'],
-    riskLevel: j['riskLevel'],
-    aiAnalysis: j['aiAnalysis'] ?? '',
-  );
+        date: DateTime.parse(j['date'].toString()),
+        salary: (j['salary'] as num).toDouble(),
+        fixed: (j['fixed'] as num).toDouble(),
+        variable: (j['variable'] as num).toDouble(),
+        bnpl: (j['bnpl'] as num).toDouble(),
+        totalRatio: (j['totalRatio'] as num).toInt(),
+        bnplRatio: (j['bnplRatio'] as num).toInt(),
+        riskLevel: j['riskLevel'].toString(),
+        aiAnalysis: j['aiAnalysis'] ?? '',
+      );
 }
 
 class StorageService {
@@ -57,15 +57,24 @@ class StorageService {
     final list = await getAnalyses();
     list.insert(0, record);
     final trimmed = list.take(20).toList();
-    await prefs.setString(_key, jsonEncode(trimmed.map((e) => e.toJson()).toList()));
+    await prefs.setString(
+        _key, jsonEncode(trimmed.map((e) => e.toJson()).toList()));
   }
 
   static Future<List<AnalysisRecord>> getAnalyses() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
     if (raw == null) return [];
-    final list = jsonDecode(raw) as List;
-    return list.map((e) => AnalysisRecord.fromJson(e)).toList();
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      return decoded
+          .whereType<Map>()
+          .map((e) => AnalysisRecord.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   static Future<void> clearAll() async {
@@ -92,7 +101,8 @@ class StorageService {
       return TrendResult(
         worsening: true,
         deltaPct: delta,
-        message: 'نسبة مصاريفك ترتفع بشكل متتالٍ آخر 3 تحليلات (+$delta% خلال الفترة الأخيرة) — حتى لو وضعك الحالي يبدو مقبول، الاتجاه يستحق انتباهك الآن قبل ما يتفاقم.',
+        message:
+            'نسبة مصاريفك ترتفع بشكل متتالٍ آخر 3 تحليلات (+$delta% خلال الفترة الأخيرة) — حتى لو وضعك الحالي يبدو مقبول، الاتجاه يستحق انتباهك الآن قبل ما يتفاقم.',
       );
     }
     return TrendResult(worsening: false, deltaPct: delta, message: '');
@@ -105,6 +115,11 @@ class TrendResult {
   final String message;
   final bool hasData;
 
-  TrendResult({required this.worsening, required this.deltaPct, required this.message, this.hasData = true});
-  factory TrendResult.insufficient() => TrendResult(worsening: false, deltaPct: 0, message: '', hasData: false);
+  TrendResult(
+      {required this.worsening,
+      required this.deltaPct,
+      required this.message,
+      this.hasData = true});
+  factory TrendResult.insufficient() =>
+      TrendResult(worsening: false, deltaPct: 0, message: '', hasData: false);
 }

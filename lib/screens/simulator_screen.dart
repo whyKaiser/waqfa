@@ -40,8 +40,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
 
   double get _total => widget.fixed + _variable + _bnpl;
   double get _remaining => widget.salary - _total;
-  int get _bnplRatio => ((_bnpl / widget.salary) * 100).round();
-  int get _totalRatio => ((_total / widget.salary) * 100).round();
+  double get _safeSalary => widget.salary > 0 ? widget.salary : 1;
+  int get _bnplRatio => ((_bnpl / _safeSalary) * 100).round();
+  int get _totalRatio => ((_total / _safeSalary) * 100).round();
 
   int get _risk {
     if (_bnplRatio > 30 || _totalRatio > 90) return 2; // خطر
@@ -49,7 +50,8 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     return 0; // آمن
   }
 
-  Color get _color => switch (_risk) { 2 => _danger, 1 => _warning, _ => _safe };
+  Color get _color =>
+      switch (_risk) { 2 => _danger, 1 => _warning, _ => _safe };
   String get _label => switch (_risk) { 2 => 'خطر', 1 => 'تحذير', _ => 'آمن' };
 
   String get _verdict {
@@ -81,7 +83,8 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             children: [
               const Text(
                 'حرّك الأرقام وشوف وضعك يتغيّر لحظياً — قبل ما تقرر',
-                style: TextStyle(fontSize: 13, color: Colors.white54, height: 1.6),
+                style:
+                    TextStyle(fontSize: 13, color: Colors.white54, height: 1.6),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -103,19 +106,29 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                         color: _color,
                       ),
                       child: Center(
-                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 200),
-                            style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: _color),
-                            child: Text('$_totalRatio%'),
-                          ),
-                          Text(_label, style: TextStyle(fontSize: 16, color: _color.withOpacity(0.85), fontWeight: FontWeight.w600)),
-                        ]),
+                        child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 200),
+                                style: TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w800,
+                                    color: _color),
+                                child: Text('$_totalRatio%'),
+                              ),
+                              Text(_label,
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      color: _color.withOpacity(0.85),
+                                      fontWeight: FontWeight.w600)),
+                            ]),
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text('نسبة المصاريف من راتبك', style: TextStyle(fontSize: 12, color: Colors.white38)),
+                  const Text('نسبة المصاريف من راتبك',
+                      style: TextStyle(fontSize: 12, color: Colors.white38)),
                 ]),
               ),
               const SizedBox(height: 16),
@@ -130,9 +143,19 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                   border: Border.all(color: _color.withOpacity(0.25)),
                 ),
                 child: Row(children: [
-                  Icon(_risk == 0 ? Icons.check_circle_outline : Icons.warning_amber_rounded, color: _color, size: 22),
+                  Icon(
+                      _risk == 0
+                          ? Icons.check_circle_outline
+                          : Icons.warning_amber_rounded,
+                      color: _color,
+                      size: 22),
                   const SizedBox(width: 12),
-                  Expanded(child: Text(_verdict, style: const TextStyle(fontSize: 13, color: Colors.white70, height: 1.6))),
+                  Expanded(
+                      child: Text(_verdict,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.white70,
+                              height: 1.6))),
                 ]),
               ),
               const SizedBox(height: 24),
@@ -141,7 +164,10 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                 value: _bnpl,
                 max: maxBnpl.toDouble(),
                 color: _danger,
-                onChanged: (v) { HapticFeedback.selectionClick(); setState(() => _bnpl = v); },
+                onChanged: (v) {
+                  HapticFeedback.selectionClick();
+                  setState(() => _bnpl = v);
+                },
               ),
               const SizedBox(height: 16),
               _slider(
@@ -149,20 +175,36 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                 value: _variable,
                 max: maxVar.toDouble(),
                 color: _accent,
-                onChanged: (v) { HapticFeedback.selectionClick(); setState(() => _variable = v); },
+                onChanged: (v) {
+                  HapticFeedback.selectionClick();
+                  setState(() => _variable = v);
+                },
               ),
               const SizedBox(height: 24),
               Row(children: [
-                Expanded(child: _miniStat('المتبقي', '${_remaining > 0 ? _remaining.toInt() : 0}', _remaining > 0 ? Colors.white70 : _danger)),
+                Expanded(
+                    child: _miniStat(
+                        'المتبقي',
+                        '${_remaining > 0 ? _remaining.toInt() : 0}',
+                        _remaining > 0 ? Colors.white70 : _danger)),
                 const SizedBox(width: 10),
-                Expanded(child: _miniStat('نسبة BNPL', '$_bnplRatio%', _bnplRatio > 20 ? _danger : _safe)),
+                Expanded(
+                    child: _miniStat('نسبة BNPL', '$_bnplRatio%',
+                        _bnplRatio > 20 ? _danger : _safe)),
               ]),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
-                  onPressed: () { HapticFeedback.lightImpact(); setState(() { _bnpl = widget.bnpl; _variable = widget.variable; }); },
-                  child: const Text('إرجاع لوضعي الحالي', style: TextStyle(color: Colors.white38)),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _bnpl = widget.bnpl;
+                      _variable = widget.variable;
+                    });
+                  },
+                  child: const Text('إرجاع لوضعي الحالي',
+                      style: TextStyle(color: Colors.white38)),
                 ),
               ),
             ],
@@ -172,7 +214,12 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     );
   }
 
-  Widget _slider({required String label, required double value, required double max, required Color color, required ValueChanged<double> onChanged}) {
+  Widget _slider(
+      {required String label,
+      required double value,
+      required double max,
+      required Color color,
+      required ValueChanged<double> onChanged}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -182,8 +229,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Colors.white60)),
-          Text('${value.toInt()} ريال', style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.w700)),
+          Text(label,
+              style: const TextStyle(fontSize: 13, color: Colors.white60)),
+          Text('${value.toInt()} ريال',
+              style: TextStyle(
+                  fontSize: 14, color: color, fontWeight: FontWeight.w700)),
         ]),
         SliderTheme(
           data: SliderThemeData(
@@ -193,7 +243,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             overlayColor: color.withOpacity(0.2),
             trackHeight: 5,
           ),
-          child: Slider(value: value.clamp(0, max), min: 0, max: max, onChanged: onChanged),
+          child: Slider(
+              value: value.clamp(0, max),
+              min: 0,
+              max: max,
+              onChanged: onChanged),
         ),
       ]),
     );
@@ -208,9 +262,12 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.white38)),
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: Colors.white38)),
         const SizedBox(height: 6),
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w700, color: color)),
       ]),
     );
   }
@@ -227,10 +284,26 @@ class _SimGauge extends CustomPainter {
     final radius = size.width / 2 - 12;
     const start = math.pi * 0.75;
     const sweep = math.pi * 1.5;
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep, false,
-        Paint()..color = Colors.white.withOpacity(0.08)..style = PaintingStyle.stroke..strokeWidth = 15..strokeCap = StrokeCap.round);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep * value, false,
-        Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 15..strokeCap = StrokeCap.round);
+    canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep,
+        false,
+        Paint()
+          ..color = Colors.white.withOpacity(0.08)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 15
+          ..strokeCap = StrokeCap.round);
+    canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep * value,
+        false,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 15
+          ..strokeCap = StrokeCap.round);
   }
 
   @override

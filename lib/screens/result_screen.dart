@@ -42,8 +42,10 @@ class _ResultScreenState extends State<ResultScreen>
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
-    _animation = CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic);
+    _animController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
+    _animation =
+        CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic);
     _calculate();
     _animController.forward();
     _fetchTrend(); // يقرأ السجل السابق قبل ما نحفظ التحليل الحالي
@@ -51,8 +53,12 @@ class _ResultScreenState extends State<ResultScreen>
   }
 
   Future<void> _fetchTrend() async {
-    final trend = await StorageService.analyzeTrend();
-    if (mounted) setState(() => _trend = trend);
+    try {
+      final trend = await StorageService.analyzeTrend();
+      if (mounted) setState(() => _trend = trend);
+    } catch (_) {
+      if (mounted) setState(() => _trend = TrendResult.insufficient());
+    }
   }
 
   /// درجة مخاطر مركّبة (0-100) توزّن 3 عوامل قابلة للتفسير:
@@ -60,7 +66,9 @@ class _ResultScreenState extends State<ResultScreen>
   /// لا تغيّر تصنيف آمن/تحذير/خطر — مؤشر تقني إضافي شفّاف يُعرض للمستخدم واللجنة.
   int get _compositeScore {
     final trendDelta = (_trend?.worsening ?? false) ? _trend!.deltaPct : 0;
-    final score = (_bnplRatio * 0.4) + (_totalRatio * 0.4) + (trendDelta.clamp(0, 100) * 0.2);
+    final score = (_bnplRatio * 0.4) +
+        (_totalRatio * 0.4) +
+        (trendDelta.clamp(0, 100) * 0.2);
     return score.round().clamp(0, 100);
   }
 
@@ -73,8 +81,9 @@ class _ResultScreenState extends State<ResultScreen>
   void _calculate() {
     final total = widget.fixed + widget.variable + widget.bnpl;
     _remaining = widget.salary - total;
-    _bnplRatio = ((widget.bnpl / widget.salary) * 100).round();
-    _totalRatio = ((total / widget.salary) * 100).round();
+    final safeSalary = widget.salary > 0 ? widget.salary : 1;
+    _bnplRatio = ((widget.bnpl / safeSalary) * 100).round();
+    _totalRatio = ((total / safeSalary) * 100).round();
     if (_bnplRatio > 30 || _totalRatio > 90) {
       _riskLevel = _RiskLevel.danger;
     } else if (_bnplRatio > 20 || _totalRatio > 75) {
@@ -110,8 +119,8 @@ class _ResultScreenState extends State<ResultScreen>
       riskLevel: _riskLevel == _RiskLevel.danger
           ? 'danger'
           : _riskLevel == _RiskLevel.warning
-          ? 'warning'
-          : 'safe',
+              ? 'warning'
+              : 'safe',
       aiAnalysis: aiText,
     ));
   }
@@ -125,8 +134,15 @@ class _ResultScreenState extends State<ResultScreen>
       concern: widget.concern,
     );
     if (mounted) {
-      setState(() { _aiAnalysis = result; _loading = false; });
-      await _saveRecord(aiText: result);
+      setState(() {
+        _aiAnalysis = result;
+        _loading = false;
+      });
+      try {
+        await _saveRecord(aiText: result);
+      } catch (_) {
+        // Keep the result visible even if local persistence fails.
+      }
     }
   }
 
@@ -191,16 +207,21 @@ class _ResultScreenState extends State<ResultScreen>
               ),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.04),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.analytics_outlined, size: 14, color: Colors.white38),
+                  const Icon(Icons.analytics_outlined,
+                      size: 14, color: Colors.white38),
                   const SizedBox(width: 6),
                   Text('درجة المخاطر المركّبة: $_compositeScore/100',
-                      style: const TextStyle(fontSize: 12, color: Colors.white54, fontWeight: FontWeight.w500)),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white54,
+                          fontWeight: FontWeight.w500)),
                 ]),
               ),
               if (_trend != null && _trend!.worsening) ...[
@@ -211,34 +232,57 @@ class _ResultScreenState extends State<ResultScreen>
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFB347).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFFFB347).withOpacity(0.3)),
+                    border: Border.all(
+                        color: const Color(0xFFFFB347).withOpacity(0.3)),
                   ),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Icon(Icons.trending_up_rounded, color: Color(0xFFFFB347), size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text(_trend!.message,
-                        style: const TextStyle(fontSize: 13, color: Colors.white70, height: 1.6))),
-                  ]),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.trending_up_rounded,
+                            color: Color(0xFFFFB347), size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                            child: Text(_trend!.message,
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white70,
+                                    height: 1.6))),
+                      ]),
                 ),
               ],
               const SizedBox(height: 20),
               Row(
                 children: [
-                  Expanded(child: _StatCard(label: 'نسبة BNPL', value: '$_bnplRatio%',
-                      color: _bnplRatio > 20 ? const Color(0xFFFF6B6B) : const Color(0xFF6BCB77))),
+                  Expanded(
+                      child: _StatCard(
+                          label: 'نسبة BNPL',
+                          value: '$_bnplRatio%',
+                          color: _bnplRatio > 20
+                              ? const Color(0xFFFF6B6B)
+                              : const Color(0xFF6BCB77))),
                   const SizedBox(width: 10),
-                  Expanded(child: _StatCard(label: 'المصاريف', value: '$_totalRatio%',
-                      color: _totalRatio > 75 ? const Color(0xFFFF6B6B) : const Color(0xFF6BCB77))),
+                  Expanded(
+                      child: _StatCard(
+                          label: 'المصاريف',
+                          value: '$_totalRatio%',
+                          color: _totalRatio > 75
+                              ? const Color(0xFFFF6B6B)
+                              : const Color(0xFF6BCB77))),
                   const SizedBox(width: 10),
-                  Expanded(child: _StatCard(label: 'المتبقي',
-                      value: '${_remaining > 0 ? _remaining.toInt() : 0}',
-                      color: Colors.white70)),
+                  Expanded(
+                      child: _StatCard(
+                          label: 'المتبقي',
+                          value: '${_remaining > 0 ? _remaining.toInt() : 0}',
+                          color: Colors.white70)),
                 ],
               ),
               const SizedBox(height: 20),
               _ExpenseChart(
-                salary: widget.salary, fixed: widget.fixed,
-                variable: widget.variable, bnpl: widget.bnpl, remaining: _remaining,
+                salary: widget.salary,
+                fixed: widget.fixed,
+                variable: widget.variable,
+                bnpl: widget.bnpl,
+                remaining: _remaining,
               ),
               const SizedBox(height: 20),
               Container(
@@ -253,19 +297,27 @@ class _ResultScreenState extends State<ResultScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      const Icon(Icons.psychology_outlined, color: Color(0xFF6C63FF), size: 20),
+                      const Icon(Icons.psychology_outlined,
+                          color: Color(0xFF6C63FF), size: 20),
                       const SizedBox(width: 8),
                       Text('تحليل الذكاء الاصطناعي',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white38)),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: Colors.white38)),
                     ]),
                     const SizedBox(height: 12),
                     _loading
-                        ? const Center(child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(color: Color(0xFF6C63FF))))
+                        ? const Center(
+                            child: Padding(
+                                padding: EdgeInsets.all(16),
+                                child: CircularProgressIndicator(
+                                    color: Color(0xFF6C63FF))))
                         : Text(_aiAnalysis ?? '',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.white70, height: 1.8)),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: Colors.white70, height: 1.8)),
                   ],
                 ),
               ),
@@ -299,7 +351,8 @@ class _ResultScreenState extends State<ResultScreen>
                     backgroundColor: const Color(0xFF6C63FF),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                 ),
               ),
@@ -312,7 +365,8 @@ class _ResultScreenState extends State<ResultScreen>
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white24),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                   child: const Text('تحليل جديد'),
                 ),
@@ -331,7 +385,10 @@ class _RiskGauge extends StatelessWidget {
   final int totalRatio;
   final _RiskLevel riskLevel;
   final double progress;
-  const _RiskGauge({required this.totalRatio, required this.riskLevel, required this.progress});
+  const _RiskGauge(
+      {required this.totalRatio,
+      required this.riskLevel,
+      required this.progress});
 
   @override
   Widget build(BuildContext context) {
@@ -354,17 +411,30 @@ class _RiskGauge extends StatelessWidget {
       ),
       child: Column(children: [
         SizedBox(
-          width: 160, height: 160,
+          width: 160,
+          height: 160,
           child: CustomPaint(
-            painter: _GaugePainter(value: (totalRatio / 100).clamp(0.0, 1.0) * progress, color: color),
-            child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text('$totalRatio%', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: color)),
-              Text(label, style: TextStyle(fontSize: 14, color: color.withOpacity(0.8))),
-            ])),
+            painter: _GaugePainter(
+                value: (totalRatio / 100).clamp(0.0, 1.0) * progress,
+                color: color),
+            child: Center(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                  Text('$totalRatio%',
+                      style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                          color: color)),
+                  Text(label,
+                      style: TextStyle(
+                          fontSize: 14, color: color.withOpacity(0.8))),
+                ])),
           ),
         ),
         const SizedBox(height: 12),
-        const Text('نسبة المصاريف من راتبك', style: TextStyle(fontSize: 13, color: Colors.white38)),
+        const Text('نسبة المصاريف من راتبك',
+            style: TextStyle(fontSize: 13, color: Colors.white38)),
       ]),
     );
   }
@@ -381,10 +451,26 @@ class _GaugePainter extends CustomPainter {
     final radius = size.width / 2 - 12;
     const startAngle = math.pi * 0.75;
     const sweepAngle = math.pi * 1.5;
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle, false,
-        Paint()..color = Colors.white.withOpacity(0.08)..style = PaintingStyle.stroke..strokeWidth = 14..strokeCap = StrokeCap.round);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle * value, false,
-        Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 14..strokeCap = StrokeCap.round);
+    canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+        false,
+        Paint()
+          ..color = Colors.white.withOpacity(0.08)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 14
+          ..strokeCap = StrokeCap.round);
+    canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle * value,
+        false,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 14
+          ..strokeCap = StrokeCap.round);
   }
 
   @override
@@ -393,7 +479,12 @@ class _GaugePainter extends CustomPainter {
 
 class _ExpenseChart extends StatelessWidget {
   final double salary, fixed, variable, bnpl, remaining;
-  const _ExpenseChart({required this.salary, required this.fixed, required this.variable, required this.bnpl, required this.remaining});
+  const _ExpenseChart(
+      {required this.salary,
+      required this.fixed,
+      required this.variable,
+      required this.bnpl,
+      required this.remaining});
 
   @override
   Widget build(BuildContext context) {
@@ -411,26 +502,43 @@ class _ExpenseChart extends StatelessWidget {
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('توزيع راتبك', style: TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500)),
+        const Text('توزيع راتبك',
+            style: TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+                fontWeight: FontWeight.w500)),
         const SizedBox(height: 16),
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Row(children: items.map((item) {
+          child: Row(
+              children: items.map((item) {
             final pct = (item.$2 / salary).clamp(0.0, 1.0);
-            return Flexible(flex: (pct * 1000).round(), child: Container(height: 12, color: item.$3));
+            return Flexible(
+                flex: math.max(1, (pct * 1000).round()),
+                child: Container(height: 12, color: item.$3));
           }).toList()),
         ),
         const SizedBox(height: 16),
         ...items.map((item) {
-          final pct = ((item.$2 / salary) * 100).round();
+          final pct = salary > 0 ? ((item.$2 / salary) * 100).round() : 0;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(children: [
-              Container(width: 10, height: 10,
-                  decoration: BoxDecoration(color: item.$3, borderRadius: BorderRadius.circular(3))),
+              Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                      color: item.$3, borderRadius: BorderRadius.circular(3))),
               const SizedBox(width: 8),
-              Expanded(child: Text(item.$1, style: const TextStyle(fontSize: 13, color: Colors.white60))),
-              Text('$pct%', style: TextStyle(fontSize: 13, color: item.$3, fontWeight: FontWeight.w500)),
+              Expanded(
+                  child: Text(item.$1,
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.white60))),
+              Text('$pct%',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: item.$3,
+                      fontWeight: FontWeight.w500)),
             ]),
           );
         }),
@@ -446,9 +554,21 @@ class _QuickTips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tips = switch (riskLevel) {
-      _RiskLevel.danger => ['أوقف كل أقساط BNPL الجديدة فوراً', 'ركّز على سداد الأقساط الحالية أولاً', 'راجع مصاريفك وحذف أي شي غير ضروري'],
-      _RiskLevel.warning => ['لا تضيف أي قسط جديد هذا الشهر', 'حاول تخفض مصاريف متغيرة بـ 10%', 'وفّر 200 ريال على الأقل قبل الصرف'],
-      _RiskLevel.safe => ['حوّل 10% من راتبك لحساب توفير', 'استمر على نفس النهج المالي', 'فكّر في استثمار صغير بالمتبقي'],
+      _RiskLevel.danger => [
+          'أوقف كل أقساط BNPL الجديدة فوراً',
+          'ركّز على سداد الأقساط الحالية أولاً',
+          'راجع مصاريفك وحذف أي شي غير ضروري'
+        ],
+      _RiskLevel.warning => [
+          'لا تضيف أي قسط جديد هذا الشهر',
+          'حاول تخفض مصاريف متغيرة بـ 10%',
+          'وفّر 200 ريال على الأقل قبل الصرف'
+        ],
+      _RiskLevel.safe => [
+          'حوّل 10% من راتبك لحساب توفير',
+          'استمر على نفس النهج المالي',
+          'فكّر في استثمار صغير بالمتبقي'
+        ],
     };
     return Container(
       padding: const EdgeInsets.all(20),
@@ -461,21 +581,37 @@ class _QuickTips extends StatelessWidget {
         const Row(children: [
           Icon(Icons.lightbulb_outline, color: Color(0xFFFFB347), size: 18),
           SizedBox(width: 8),
-          Text('خطواتك الآن', style: TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500)),
+          Text('خطواتك الآن',
+              style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w500)),
         ]),
         const SizedBox(height: 12),
         ...tips.asMap().entries.map((e) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              width: 22, height: 22,
-              decoration: BoxDecoration(color: const Color(0xFF6C63FF).withOpacity(0.2), borderRadius: BorderRadius.circular(6)),
-              child: Center(child: Text('${e.key + 1}', style: const TextStyle(fontSize: 11, color: Color(0xFF6C63FF), fontWeight: FontWeight.w600))),
-            ),
-            const SizedBox(width: 10),
-            Expanded(child: Text(e.value, style: const TextStyle(fontSize: 13, color: Colors.white60, height: 1.5))),
-          ]),
-        )),
+              padding: const EdgeInsets.only(bottom: 10),
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFF6C63FF).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6)),
+                  child: Center(
+                      child: Text('${e.key + 1}',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF6C63FF),
+                              fontWeight: FontWeight.w600))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Text(e.value,
+                        style: const TextStyle(
+                            fontSize: 13, color: Colors.white60, height: 1.5))),
+              ]),
+            )),
       ]),
     );
   }
@@ -484,7 +620,8 @@ class _QuickTips extends StatelessWidget {
 class _ForecastCard extends StatelessWidget {
   final double salary, remaining;
   final int bnplRatio;
-  const _ForecastCard({required this.salary, required this.remaining, required this.bnplRatio});
+  const _ForecastCard(
+      {required this.salary, required this.remaining, required this.bnplRatio});
 
   @override
   Widget build(BuildContext context) {
@@ -529,15 +666,23 @@ class _ForecastCard extends StatelessWidget {
         const Row(children: [
           Icon(Icons.auto_graph_rounded, color: Color(0xFF6C63FF), size: 18),
           SizedBox(width: 8),
-          Text('توقّعاتك المالية', style: TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500)),
+          Text('توقّعاتك المالية',
+              style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w500)),
         ]),
         const SizedBox(height: 14),
         ...lines.map((l) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Icon(l.$1, color: l.$3, size: 18),
                 const SizedBox(width: 10),
-                Expanded(child: Text(l.$2, style: const TextStyle(fontSize: 13, color: Colors.white60, height: 1.6))),
+                Expanded(
+                    child: Text(l.$2,
+                        style: const TextStyle(
+                            fontSize: 13, color: Colors.white60, height: 1.6))),
               ]),
             )),
       ]),
@@ -548,7 +693,8 @@ class _ForecastCard extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   final String label, value;
   final Color color;
-  const _StatCard({required this.label, required this.value, required this.color});
+  const _StatCard(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -560,11 +706,14 @@ class _StatCard extends StatelessWidget {
         border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.white38), textAlign: TextAlign.center),
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: Colors.white38),
+            textAlign: TextAlign.center),
         const SizedBox(height: 6),
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: color)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w600, color: color)),
       ]),
     );
   }
 }
- 
