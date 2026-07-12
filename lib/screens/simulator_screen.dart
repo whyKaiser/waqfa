@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:math' as math;
+import '../services/financial_decision_engine.dart';
 
-/// محاكي "ماذا لو؟" — يجسّد جوهر فكرة وقفة: نوقفك قبل لا تقع.
-/// المستخدم/اللجنة يحرّك السلايدر ويشوف نسبته والـ gauge تتغيّر لحظياً.
+/// وقفة قبل تدفع: جدار حماية يحاكي أثر قرار الشراء قبل الالتزام به.
 class SimulatorScreen extends StatefulWidget {
   final double salary;
   final double fixed;
@@ -23,8 +22,8 @@ class SimulatorScreen extends StatefulWidget {
 }
 
 class _SimulatorScreenState extends State<SimulatorScreen> {
-  late double _bnpl;
-  late double _variable;
+  late final FinancialProfile _profile;
+  late double _installment;
 
   static const _danger = Color(0xFFFF6B6B);
   static const _warning = Color(0xFFFFB347);
@@ -34,278 +33,319 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   @override
   void initState() {
     super.initState();
-    _bnpl = widget.bnpl;
-    _variable = widget.variable;
+    _profile = FinancialProfile(
+      salary: widget.salary,
+      fixedExpenses: widget.fixed,
+      variableExpenses: widget.variable,
+      currentBnpl: widget.bnpl,
+    );
+    _installment = (widget.salary * .08).clamp(100, 1200).toDouble();
   }
 
-  double get _total => widget.fixed + _variable + _bnpl;
-  double get _remaining => widget.salary - _total;
-  double get _safeSalary => widget.salary > 0 ? widget.salary : 1;
-  int get _bnplRatio => ((_bnpl / _safeSalary) * 100).round();
-  int get _totalRatio => ((_total / _safeSalary) * 100).round();
+  DecisionAnalysis get _analysis => FinancialDecisionEngine.analyze(
+        _profile,
+        proposedInstallment: _installment,
+      );
 
-  int get _risk {
-    if (_bnplRatio > 30 || _totalRatio > 90) return 2; // خطر
-    if (_bnplRatio > 20 || _totalRatio > 75) return 1; // تحذير
-    return 0; // آمن
-  }
-
-  Color get _color =>
-      switch (_risk) { 2 => _danger, 1 => _warning, _ => _safe };
-  String get _label => switch (_risk) { 2 => 'خطر', 1 => 'تحذير', _ => 'آمن' };
-
-  String get _verdict {
-    final diff = (_bnpl - widget.bnpl).round();
-    if (diff > 0) {
-      return 'لو أضفت قسط بقيمة $diff ريال، أقساطك توصل $_bnplRatio% من راتبك — وضعك يصير "$_label".';
-    } else if (diff < 0) {
-      return 'لو قلّلت أقساطك بـ ${-diff} ريال، تنزل لـ $_bnplRatio% — وضعك يصير "$_label".';
-    }
-    return 'هذا وضعك الحالي: أقساط $_bnplRatio%، مصاريف $_totalRatio% — "$_label".';
-  }
+  Color _riskColor(int score) => score >= 70
+      ? _danger
+      : score >= 45
+          ? _warning
+          : _safe;
 
   @override
   Widget build(BuildContext context) {
-    final maxBnpl = (widget.salary * 0.9).clamp(1000, double.infinity);
-    final maxVar = (widget.salary * 0.9).clamp(1000, double.infinity);
+    final analysis = _analysis;
+    final color = _riskColor(analysis.proposedRisk);
+    final maxInstallment = (widget.salary * .35).clamp(500, 4000).toDouble();
+    final passedShocks = analysis.shocks.where((s) => s.survives).length;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        elevation: 0,
         centerTitle: true,
-        title: const Text('محاكي: ماذا لو؟'),
+        title: const Text('وقفة قبل تدفع'),
       ),
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const Text(
-                'حرّك الأرقام وشوف وضعك يتغيّر لحظياً — قبل ما تقرر',
-                style:
-                    TextStyle(fontSize: 13, color: Colors.white54, height: 1.6),
-                textAlign: TextAlign.center,
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _hero(analysis, color),
+            const SizedBox(height: 14),
+            _installmentSlider(maxInstallment),
+            const SizedBox(height: 14),
+            _beforeAfter(analysis),
+            const SizedBox(height: 14),
+            _cashFlow(analysis),
+            const SizedBox(height: 14),
+            _section(
+              icon: Icons.manage_search_rounded,
+              title: 'لماذا تغيّرت النتيجة؟',
+              child: Column(
+                children: analysis.factors.map((f) => _factorRow(f)).toList(),
               ),
-              const SizedBox(height: 20),
-              // Live gauge
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: _color.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _color.withOpacity(0.3)),
-                ),
-                child: Column(children: [
-                  SizedBox(
-                    width: 170,
-                    height: 170,
-                    child: CustomPaint(
-                      painter: _SimGauge(
-                        value: (_totalRatio / 100).clamp(0.0, 1.0),
-                        color: _color,
-                      ),
-                      child: Center(
-                        child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 200),
-                                style: TextStyle(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.w800,
-                                    color: _color),
-                                child: Text('$_totalRatio%'),
-                              ),
-                              Text(_label,
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      color: _color.withOpacity(0.85),
-                                      fontWeight: FontWeight.w600)),
-                            ]),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('نسبة المصاريف من راتبك',
-                      style: TextStyle(fontSize: 12, color: Colors.white38)),
-                ]),
+            ),
+            const SizedBox(height: 14),
+            _section(
+              icon: Icons.psychology_alt_outlined,
+              title: 'التدخل السلوكي المناسب لك',
+              color: _accent,
+              child: Text(analysis.behavioralNudge,
+                  style: const TextStyle(
+                      color: Colors.white70, height: 1.7, fontSize: 13)),
+            ),
+            const SizedBox(height: 14),
+            _section(
+              icon: Icons.shield_outlined,
+              title: 'اختبار تحمّل الطوارئ: $passedShocks من 3',
+              color: passedShocks >= 2 ? _safe : _danger,
+              child: Column(
+                children: analysis.shocks.map(_shockRow).toList(),
               ),
-              const SizedBox(height: 16),
-              // Verdict
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _color.withOpacity(0.25)),
-                ),
-                child: Row(children: [
-                  Icon(
-                      _risk == 0
-                          ? Icons.check_circle_outline
-                          : Icons.warning_amber_rounded,
-                      color: _color,
-                      size: 22),
-                  const SizedBox(width: 12),
-                  Expanded(
-                      child: Text(_verdict,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.white70,
-                              height: 1.6))),
-                ]),
-              ),
-              const SizedBox(height: 24),
-              _slider(
-                label: 'أقساط BNPL',
-                value: _bnpl,
-                max: maxBnpl.toDouble(),
-                color: _danger,
-                onChanged: (v) {
-                  HapticFeedback.selectionClick();
-                  setState(() => _bnpl = v);
-                },
-              ),
-              const SizedBox(height: 16),
-              _slider(
-                label: 'مصاريف متغيرة',
-                value: _variable,
-                max: maxVar.toDouble(),
-                color: _accent,
-                onChanged: (v) {
-                  HapticFeedback.selectionClick();
-                  setState(() => _variable = v);
-                },
-              ),
-              const SizedBox(height: 24),
-              Row(children: [
-                Expanded(
-                    child: _miniStat(
-                        'المتبقي',
-                        '${_remaining > 0 ? _remaining.toInt() : 0}',
-                        _remaining > 0 ? Colors.white70 : _danger)),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: _miniStat('نسبة BNPL', '$_bnplRatio%',
-                        _bnplRatio > 20 ? _danger : _safe)),
-              ]),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    setState(() {
-                      _bnpl = widget.bnpl;
-                      _variable = widget.variable;
-                    });
-                  },
-                  child: const Text('إرجاع لوضعي الحالي',
-                      style: TextStyle(color: Colors.white38)),
+            ),
+            const SizedBox(height: 14),
+            if (analysis.alternatives.isNotEmpty)
+              _section(
+                icon: Icons.auto_awesome_rounded,
+                title: 'بدائل وقفة الآمنة',
+                color: _safe,
+                child: Column(
+                  children: analysis.alternatives
+                      .map((a) => _alternativeRow(a))
+                      .toList(),
                 ),
               ),
-            ],
-          ),
+          ]),
         ),
       ),
     );
   }
 
-  Widget _slider(
-      {required String label,
-      required double value,
-      required double max,
-      required Color color,
-      required ValueChanged<double> onChanged}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(label,
-              style: const TextStyle(fontSize: 13, color: Colors.white60)),
-          Text('${value.toInt()} ريال',
+  Widget _hero(DecisionAnalysis a, Color color) => AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+              colors: [color.withOpacity(.22), color.withOpacity(.06)]),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: color.withOpacity(.45)),
+        ),
+        child: Column(children: [
+          const Text('مؤشر القرار',
+              style: TextStyle(color: Colors.white54, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text('${a.proposedRisk}/100',
               style: TextStyle(
-                  fontSize: 14, color: color, fontWeight: FontWeight.w700)),
+                  color: color, fontSize: 42, fontWeight: FontWeight.w800)),
+          Text(a.level,
+              style: TextStyle(
+                  color: color, fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          Text(a.verdict,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: Colors.white70, height: 1.6, fontSize: 13)),
         ]),
-        SliderTheme(
-          data: SliderThemeData(
-            activeTrackColor: color,
-            inactiveTrackColor: Colors.white.withOpacity(0.1),
-            thumbColor: color,
-            overlayColor: color.withOpacity(0.2),
-            trackHeight: 5,
+      );
+
+  Widget _installmentSlider(double max) => _section(
+        icon: Icons.shopping_cart_checkout_rounded,
+        title: 'القسط الذي تفكر فيه',
+        child: Column(children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('جرّب القرار قبل الالتزام',
+                style: TextStyle(color: Colors.white54, fontSize: 12)),
+            Text('${_installment.round()} ريال/شهر',
+                style: const TextStyle(
+                    color: _accent, fontWeight: FontWeight.w700)),
+          ]),
+          Slider(
+            value: _installment.clamp(0, max),
+            min: 0,
+            max: max,
+            divisions: 40,
+            activeColor: _accent,
+            onChanged: (value) {
+              HapticFeedback.selectionClick();
+              setState(() => _installment = value);
+            },
           ),
-          child: Slider(
-              value: value.clamp(0, max),
-              min: 0,
-              max: max,
-              onChanged: onChanged),
+        ]),
+      );
+
+  Widget _beforeAfter(DecisionAnalysis a) => Row(children: [
+        Expanded(
+            child: _metric('قبل القرار', '${a.currentRisk}/100',
+                _riskColor(a.currentRisk))),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Icon(Icons.arrow_back_rounded, color: Colors.white30),
         ),
-      ]),
-    );
-  }
+        Expanded(
+            child: _metric('بعد القرار', '${a.proposedRisk}/100',
+                _riskColor(a.proposedRisk))),
+        const SizedBox(width: 8),
+        Expanded(
+            child: _metric(
+                'التغيّر',
+                '${a.riskIncrease >= 0 ? "+" : ""}${a.riskIncrease}',
+                a.riskIncrease > 10 ? _danger : _safe)),
+      ]);
 
-  Widget _miniStat(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+  Widget _cashFlow(DecisionAnalysis a) => _section(
+        icon: Icons.timeline_rounded,
+        title: 'توأمك المالي - توقع 90 يومًا',
+        color: const Color(0xFF48CAE4),
+        child: Column(children: [
+          Row(
+            children: List.generate(
+                3,
+                (i) => Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(left: i < 2 ? 8 : 0),
+                        child: _metric(
+                            'شهر ${i + 1}',
+                            '${a.ninetyDayBalances[i].round()}',
+                            a.ninetyDayBalances[i] >= 0 ? _safe : _danger),
+                      ),
+                    )),
+          ),
+          const SizedBox(height: 10),
+          Text('المتبقي اليومي المتوقع: ${a.dailyAllowance.round()} ريال',
+              style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        ]),
+      );
+
+  Widget _factorRow(RiskFactor f) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 38,
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            decoration: BoxDecoration(
+              color: (f.impact > 0 ? _danger : _safe).withOpacity(.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text('${f.impact > 0 ? "+" : ""}${f.impact}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: f.impact > 0 ? _danger : _safe, fontSize: 12)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(f.title,
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13)),
+                Text(f.explanation,
+                    style: const TextStyle(
+                        color: Colors.white38, height: 1.5, fontSize: 11)),
+              ])),
+        ]),
+      );
+
+  Widget _shockRow(ShockResult s) => Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: Row(children: [
+          Icon(s.survives ? Icons.check_circle_outline : Icons.cancel_outlined,
+              color: s.survives ? _safe : _danger, size: 19),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text('${s.name} (${s.amount.round()} ريال)',
+                  style: const TextStyle(color: Colors.white60, fontSize: 12))),
+          Text(
+              s.survives
+                  ? 'يتحمّل'
+                  : 'عجز ${s.balanceAfterShock.abs().round()}',
+              style:
+                  TextStyle(color: s.survives ? _safe : _danger, fontSize: 11)),
+        ]),
+      );
+
+  Widget _alternativeRow(SafeAlternative a) => InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          setState(() => _installment = a.installment);
+        },
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: Column(children: [
-        Text(label,
-            style: const TextStyle(fontSize: 11, color: Colors.white38)),
-        const SizedBox(height: 6),
-        Text(value,
-            style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w700, color: color)),
-      ]),
-    );
-  }
-}
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Row(children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: _riskColor(a.riskScore).withOpacity(.14),
+              child: Text('${a.riskScore}',
+                  style:
+                      TextStyle(color: _riskColor(a.riskScore), fontSize: 12)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(a.title,
+                      style: const TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13)),
+                  Text(a.explanation,
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11)),
+                ])),
+            const Icon(Icons.chevron_left_rounded, color: Colors.white24),
+          ]),
+        ),
+      );
 
-class _SimGauge extends CustomPainter {
-  final double value;
-  final Color color;
-  _SimGauge({required this.value, required this.color});
+  Widget _section(
+          {required IconData icon,
+          required String title,
+          required Widget child,
+          Color color = _accent}) =>
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(.045),
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: Colors.white.withOpacity(.08)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(icon, color: color, size: 19),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13))),
+          ]),
+          const SizedBox(height: 12),
+          child,
+        ]),
+      );
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 12;
-    const start = math.pi * 0.75;
-    const sweep = math.pi * 1.5;
-    canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        start,
-        sweep,
-        false,
-        Paint()
-          ..color = Colors.white.withOpacity(0.08)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 15
-          ..strokeCap = StrokeCap.round);
-    canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        start,
-        sweep * value,
-        false,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 15
-          ..strokeCap = StrokeCap.round);
-  }
-
-  @override
-  bool shouldRepaint(_SimGauge old) => old.value != value || old.color != color;
+  Widget _metric(String label, String value, Color color) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.04),
+            borderRadius: BorderRadius.circular(11)),
+        child: Column(children: [
+          Text(label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white38, fontSize: 10)),
+          const SizedBox(height: 4),
+          Text(value,
+              style: TextStyle(
+                  color: color, fontSize: 16, fontWeight: FontWeight.w700)),
+        ]),
+      );
 }

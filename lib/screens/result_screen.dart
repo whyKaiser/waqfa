@@ -330,7 +330,7 @@ class _ResultScreenState extends State<ResultScreen>
                 bnplRatio: _bnplRatio,
               ),
               const SizedBox(height: 16),
-              // محاكي "ماذا لو؟" — لحظة العرض القوية
+              // جدار حماية القرار — لحظة العرض الرئيسية أمام لجنة التحكيم
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -345,8 +345,8 @@ class _ResultScreenState extends State<ResultScreen>
                       ),
                     ),
                   ),
-                  icon: const Icon(Icons.tune_rounded, size: 20),
-                  label: const Text('جرّب: ماذا لو غيّرت أقساطك؟'),
+                  icon: const Icon(Icons.shield_outlined, size: 20),
+                  label: const Text('وقفة قبل تدفع — اختبر قرارك'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C63FF),
                     foregroundColor: Colors.white,
