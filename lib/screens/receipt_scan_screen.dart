@@ -35,8 +35,8 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('موافقة على التحليل السحابي'),
-            content: const Text(
-              'لتحليل الفاتورة ستُرسل الصورة إلى مزود الذكاء الاصطناعي Groq. قد تحتوي الصورة على بيانات حساسة؛ اخفِ أي معلومات لا تريد إرسالها. هل توافق؟',
+            content: Text(
+              'لتحليل الفاتورة ستُرسل الصورة إلى مزود الذكاء الاصطناعي ${AiService.providerName}. قد تحتوي الصورة على بيانات حساسة؛ اخفِ أي معلومات لا تريد إرسالها. هل توافق؟',
             ),
             actions: [
               TextButton(

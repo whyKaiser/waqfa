@@ -99,8 +99,9 @@ class FinancialDecisionEngine {
     FinancialProfile profile, {
     required double proposedInstallment,
   }) {
+    _validate(profile, proposedInstallment);
     final salary = math.max(profile.salary, 1).toDouble();
-    final installment = math.max(proposedInstallment, 0).toDouble();
+    final installment = proposedInstallment;
     final currentRisk = _score(profile, 0);
     final proposedRisk = _score(profile, installment);
     final total = profile.fixedExpenses +
@@ -143,6 +144,22 @@ class FinancialDecisionEngine {
       alternatives: alternatives,
       shocks: shocks,
     );
+  }
+
+  static void _validate(
+    FinancialProfile profile,
+    double proposedInstallment,
+  ) {
+    final values = [
+      profile.salary,
+      profile.fixedExpenses,
+      profile.variableExpenses,
+      profile.currentBnpl,
+      proposedInstallment,
+    ];
+    if (values.any((value) => !value.isFinite || value < 0)) {
+      throw ArgumentError('Financial values must be finite and non-negative.');
+    }
   }
 
   static CashFlowSimulationResult _projectNinetyDays(

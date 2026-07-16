@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import '../services/behavioral_learning_service.dart';
 import '../services/decision_outcome_service.dart';
 import '../services/financial_decision_engine.dart';
+import '../services/financial_prevention_engine.dart';
+import '../services/future_ledger_service.dart';
+import '../theme/waqfa_theme.dart';
 
 /// وقفة قبل تدفع: جدار حماية يحاكي أثر قرار الشراء قبل الالتزام به.
 class SimulatorScreen extends StatefulWidget {
@@ -28,12 +31,17 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   late double _installment;
   DecisionOutcome? _recordedOutcome;
   bool _recordingOutcome = false;
+  bool _preventionBusy = false;
+  bool _ledgerSaved = false;
+  double _appliedVariableCut = 0;
+  MinimumSavingIntervention? _adoptedIntervention;
+  FinancialPreventionAnalysis? _prevention;
   InterventionStrategy _intervention = InterventionStrategy.coolingOff;
 
   static const _danger = Color(0xFFFF6B6B);
   static const _warning = Color(0xFFFFB347);
   static const _safe = Color(0xFF6BCB77);
-  static const _accent = Color(0xFF6C63FF);
+  static const _accent = WaqfaColors.primary;
 
   @override
   void initState() {
@@ -48,10 +56,19 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     BehavioralLearningService.recommend().then((value) {
       if (mounted) setState(() => _intervention = value);
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshPrevention());
   }
 
+  FinancialProfile get _effectiveProfile => FinancialProfile(
+        salary: _profile.salary,
+        fixedExpenses: _profile.fixedExpenses,
+        variableExpenses: (_profile.variableExpenses - _appliedVariableCut)
+            .clamp(0, double.infinity),
+        currentBnpl: _profile.currentBnpl,
+      );
+
   DecisionAnalysis get _analysis => FinancialDecisionEngine.analyze(
-        _profile,
+        _effectiveProfile,
         proposedInstallment: _installment,
       );
 
@@ -61,6 +78,87 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
           : score >= FinancialDecisionEngine.warningThreshold
               ? _warning
               : _safe;
+
+  Future<void> _refreshPrevention({bool keepLedgerState = false}) async {
+    final installment = _installment;
+    final profile = _effectiveProfile;
+    if (mounted) setState(() => _preventionBusy = true);
+    final result = await Future(
+      () => FinancialPreventionEngine.analyze(
+        profile,
+        proposedInstallment: installment,
+      ),
+    );
+    if (!mounted || (_installment - installment).abs() > .01) return;
+    setState(() {
+      _prevention = result;
+      _preventionBusy = false;
+      if (!keepLedgerState) _ledgerSaved = false;
+    });
+  }
+
+  Future<void> _recordFuture(
+    FutureDecisionType type,
+    String label, {
+    bool applyPlan = false,
+  }) async {
+    final prevention = _prevention;
+    if (prevention == null) return;
+    final intervention = prevention.intervention;
+    final adjusted = switch (type) {
+      FutureDecisionType.cancelled => 0.0,
+      FutureDecisionType.delayed => _installment,
+      FutureDecisionType.reduced => intervention.adjustedInstallment,
+      FutureDecisionType.planAccepted => intervention.adjustedInstallment,
+    };
+    final paymentCountAfter = intervention.delayDays >= 30
+        ? (prevention.installmentPaymentsWithinHorizon - 1).clamp(0, 3)
+        : prevention.installmentPaymentsWithinHorizon;
+    final avoided =
+        ((_installment * prevention.installmentPaymentsWithinHorizon) -
+                (adjusted * paymentCountAfter))
+            .clamp(0, double.infinity)
+            .toDouble();
+    final afterRecovery = prevention.recovery.afterDecisionDays ?? 90;
+    final interventionRecovery =
+        prevention.recovery.afterInterventionDays ?? 90;
+
+    await FutureLedgerService.record(
+      FutureLedgerEntry(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        date: DateTime.now(),
+        type: type,
+        decisionLabel: label,
+        originalInstallment: _installment,
+        adjustedInstallment: adjusted,
+        avoidedCommitmentWithin90Days: avoided,
+        riskBefore: intervention.riskBefore,
+        riskAfter: type == FutureDecisionType.cancelled
+            ? _analysis.currentRisk
+            : intervention.riskAfter,
+        fragileDaysAvoided: prevention.recovery.avoidedFragileDays,
+        recoveryDaysImproved:
+            (afterRecovery - interventionRecovery).clamp(0, 90),
+      ),
+    );
+
+    if (!mounted) return;
+    HapticFeedback.mediumImpact();
+    if (applyPlan) {
+      setState(() {
+        _installment = intervention.adjustedInstallment;
+        _appliedVariableCut = intervention.monthlyVariableCut;
+        _adoptedIntervention = intervention;
+        _ledgerSaved = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم اعتماد أقل تدخل وحفظ أثر القرار محليًا'),
+        ),
+      );
+      await _refreshPrevention(keepLedgerState: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +184,8 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             _installmentSlider(maxInstallment),
             const SizedBox(height: 14),
             _beforeAfter(analysis),
+            const SizedBox(height: 14),
+            _preventionCard(),
             const SizedBox(height: 14),
             _cashFlow(analysis),
             const SizedBox(height: 14),
@@ -223,6 +323,16 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                   _intervention,
                   outcome != DecisionOutcome.continued,
                 );
+                if (outcome != DecisionOutcome.continued) {
+                  final ledgerType = switch (outcome) {
+                    DecisionOutcome.delayed => FutureDecisionType.delayed,
+                    DecisionOutcome.reduced => FutureDecisionType.reduced,
+                    DecisionOutcome.cancelled => FutureDecisionType.cancelled,
+                    DecisionOutcome.continued =>
+                      FutureDecisionType.planAccepted,
+                  };
+                  await _recordFuture(ledgerType, 'قرار شراء محاكى');
+                }
                 if (!mounted) return;
                 HapticFeedback.mediumImpact();
                 setState(() => _recordedOutcome = outcome);
@@ -254,11 +364,187 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             activeColor: _accent,
             onChanged: (value) {
               HapticFeedback.selectionClick();
-              setState(() => _installment = value);
+              setState(() {
+                _installment = value;
+                _appliedVariableCut = 0;
+                _adoptedIntervention = null;
+                _ledgerSaved = false;
+              });
             },
+            onChangeEnd: (_) => _refreshPrevention(),
           ),
         ]),
       );
+
+  Widget _preventionCard() {
+    final prevention = _prevention;
+    if (_preventionBusy || prevention == null) {
+      return _section(
+        icon: Icons.auto_graph_rounded,
+        title: 'محرك الوقاية الاستباقي',
+        color: WaqfaColors.amadLavender,
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'نبني 72 مسارًا ماليًا قابلًا للتكرار…',
+                style: TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final forecast = prevention.proposedForecast;
+    final intervention = prevention.intervention;
+    final adopted = _adoptedIntervention;
+    final probability = (forecast.criticalProbability * 100).round();
+    final recovery = prevention.recovery.afterDecisionDays;
+    final recoveryAfter = prevention.recovery.afterInterventionDays;
+    final fallText = forecast.fallDay == null
+        ? 'لا تظهر نافذة سقوط مالي خلال 90 يومًا'
+        : 'اليوم ${forecast.fallDay! + 1} · ${_dateAfter(forecast.fallDay!)}';
+
+    return _section(
+      icon: Icons.health_and_safety_outlined,
+      title: 'إنذار وقفة الاستباقي',
+      color: WaqfaColors.amadCoral,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _metric(
+                  'تاريخ السقوط',
+                  fallText,
+                  forecast.fallDay == null ? _safe : _danger,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _metric(
+                  'احتمال الضغط',
+                  '$probability%',
+                  probability >= 60 ? _danger : _warning,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _metric(
+                  'تكلفة 90 يومًا',
+                  '${prevention.decisionCostWithinHorizon.round()} ر.س',
+                  WaqfaColors.amadClay,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _ledgerSaved && adopted != null
+                ? 'تم اعتماد أقل تدخل'
+                : intervention.title,
+            style: const TextStyle(
+              color: WaqfaColors.amadSand,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            _ledgerSaved && adopted != null
+                ? 'القسط ${adopted.adjustedInstallment.round()} ريال شهريًا مع حماية '
+                    '${adopted.monthlyVariableCut.round()} ريال من الصرف المتغير. '
+                    'الأرقام أعلاه تمثل وضعك بعد تطبيق الخطة.'
+                : intervention.explanation,
+            style: const TextStyle(
+              color: Colors.white70,
+              height: 1.65,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Text(
+            'زمن التعافي: ${_recoveryText(recovery)} ← بعد التدخل ${_recoveryText(recoveryAfter)} · '
+            'تجنّب ${prevention.recovery.avoidedFragileDays} يوم هش',
+            style: const TextStyle(color: WaqfaColors.cyan, fontSize: 11),
+          ),
+          const SizedBox(height: 11),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: forecast.bands
+                .map(
+                  (band) => Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.045),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Text(
+                      '${band.label}: ${band.firstCriticalDay == null ? "مستقر" : "اليوم ${band.firstCriticalDay! + 1}"}',
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 10),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _ledgerSaved || intervention.numberOfChanges == 0
+                  ? null
+                  : () => _recordFuture(
+                        FutureDecisionType.planAccepted,
+                        'أقل تدخل منقذ',
+                        applyPlan: true,
+                      ),
+              icon: const Icon(Icons.check_circle_outline_rounded),
+              label: Text(_ledgerSaved ? 'تم اعتماد الخطة' : 'اعتمد أقل تدخل'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            dense: true,
+            title: const Text(
+              'افتراضات المحاكاة وحدودها',
+              style: TextStyle(color: Colors.white38, fontSize: 10),
+            ),
+            children: [
+              Text(
+                forecast.disclosure,
+                style: const TextStyle(
+                  color: Colors.white38,
+                  height: 1.55,
+                  fontSize: 9,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _recoveryText(int? days) =>
+      days == null ? 'لم يتعافَ خلال الأفق' : '$days يوم';
+
+  String _dateAfter(int day) {
+    final date = DateTime.now().add(Duration(days: day + 1));
+    return '${date.day}/${date.month}/${date.year}';
+  }
 
   Widget _beforeAfter(DecisionAnalysis a) => Row(children: [
         Expanded(

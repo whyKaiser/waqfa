@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/ai_service.dart';
+import '../theme/waqfa_theme.dart';
 import 'result_screen.dart';
 import 'connect_screen.dart';
 import 'receipt_scan_screen.dart';
@@ -78,7 +80,8 @@ class _InputScreenState extends State<InputScreen> {
       _parseAmount(_variableCtrl),
       _parseAmount(_bnplCtrl),
     ];
-    if (values.any((value) => value == null || !value.isFinite)) {
+    if (values.any((value) =>
+        value == null || !value.isFinite || value < 0 || value > 100000000)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تحقق من المبالغ المدخلة')),
       );
@@ -114,6 +117,23 @@ class _InputScreenState extends State<InputScreen> {
     return double.tryParse(text);
   }
 
+  void _loadDemoProfile() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _salaryCtrl.text = '8000';
+      _fixedCtrl.text = '3500';
+      _variableCtrl.text = '1500';
+      _bnplCtrl.text = '1800';
+      _concernCtrl.text = 'أفكر في قسط جديد بقيمة 640 ريال';
+      _allowCloudAi = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('تم تحميل شخصية سارة الاصطناعية — لا توجد بيانات حقيقية'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,6 +150,51 @@ class _InputScreenState extends State<InputScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: WaqfaColors.amadClay.withOpacity(.11),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: WaqfaColors.amadClay.withOpacity(.35),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.science_outlined,
+                      color: WaqfaColors.amadClay,
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'وضع العرض — بيانات اصطناعية',
+                            style: TextStyle(
+                              color: WaqfaColors.amadSand,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            'حمّل سيناريو سارة القابل لإعادة التشغيل.',
+                            style:
+                                TextStyle(color: Colors.white38, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _loadDemoProfile,
+                      child: const Text('تحميل'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               // ربط تلقائي عبر المصرفية المفتوحة
               SizedBox(
                 width: double.infinity,
@@ -226,14 +291,14 @@ class _InputScreenState extends State<InputScreen> {
                 child: SwitchListTile.adaptive(
                   value: _allowCloudAi,
                   onChanged: (value) => setState(() => _allowCloudAi = value),
-                  activeColor: const Color(0xFF6C63FF),
+                  activeColor: WaqfaColors.primary,
                   title: const Text(
                     'تحليل سحابي اختياري',
                     style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
-                  subtitle: const Text(
-                    'عند تفعيله تُرسل أرقامك وبيانات ملفك التخصيصي إلى Groq لإنشاء نصيحة. عند إيقافه يعمل التحليل المحلي فقط.',
-                    style: TextStyle(
+                  subtitle: Text(
+                    'عند تفعيله تُرسل أرقامك وبيانات ملفك التخصيصي إلى ${AiService.providerName} لصياغة الشرح فقط. الأرقام من محرك وقفة المحلي.',
+                    style: const TextStyle(
                         color: Colors.white38, fontSize: 11, height: 1.5),
                   ),
                 ),
@@ -244,7 +309,7 @@ class _InputScreenState extends State<InputScreen> {
                 child: ElevatedButton(
                   onPressed: _analyze,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
+                    backgroundColor: WaqfaColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(

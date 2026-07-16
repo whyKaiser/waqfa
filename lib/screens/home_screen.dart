@@ -5,6 +5,9 @@ import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'learn_screen.dart';
 import 'evidence_screen.dart';
+import 'impact_ledger_screen.dart';
+import 'waqfa_plan_screen.dart';
+import '../theme/waqfa_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,22 +30,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   final _features = [
     (
-      Icons.credit_card_off_outlined,
-      'يراقب أقساط BNPL',
-      'تمارا، تابي، وغيرها',
-      const Color(0xFFFF6B6B)
+      Icons.event_busy_outlined,
+      'تاريخ السقوط المالي',
+      'متى يبدأ الضغط وكم احتماله',
+      WaqfaColors.amadCoral
     ),
     (
-      Icons.warning_amber_outlined,
-      'إنذار مبكر ذكي',
-      'قبل ما تقع في المشكلة',
-      const Color(0xFFFFB347)
+      Icons.health_and_safety_outlined,
+      'أقل تدخل منقذ',
+      'أصغر تغيير يحمي قرارك',
+      WaqfaColors.amadClay
     ),
     (
-      Icons.psychology_outlined,
-      'تحليل بالذكاء الاصطناعي',
-      'نصيحة شخصية بالعربي',
-      const Color(0xFF6C63FF)
+      Icons.route_outlined,
+      'خطة وقفة محسوبة',
+      'هدف 7 أو 30 أو 90 يومًا',
+      WaqfaColors.amadLavender
     ),
   ];
 
@@ -147,21 +150,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           height: 56,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
+                              colors: [
+                                WaqfaColors.primary,
+                                WaqfaColors.cyan,
+                              ],
                               begin: Alignment.topRight,
                               end: Alignment.bottomLeft,
                             ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF6C63FF).withOpacity(0.4),
+                                color: WaqfaColors.primary.withOpacity(0.4),
                                 blurRadius: 16,
                                 offset: const Offset(0, 4),
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.pause_circle_outline_rounded,
-                              color: Colors.white, size: 30),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              'assets/waqfa_icon.png',
+                              fit: BoxFit.cover,
+                              semanticLabel: 'شعار وقفة',
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -215,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 color: Colors.white,
                                 height: 1.1)),
                         const SizedBox(height: 8),
-                        Text('مستشارك المالي الذكي\nيحذرك قبل أن تقع في الدين',
+                        Text('شريك وقاية مالية\nيرى أثر القرار قبل ما تلتزم',
                             style: const TextStyle(
                                 fontSize: 15,
                                 color: Colors.white54,
@@ -258,6 +270,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           onTap: () => _navigateTo(const InputScreen()),
                         ),
                         const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () =>
+                                    _navigateTo(const WaqfaPlanScreen()),
+                                icon: const Icon(Icons.route_outlined),
+                                label: const Text('خطة وقفة'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () =>
+                                    _navigateTo(const ImpactLedgerScreen()),
+                                icon: const Icon(Icons.auto_graph_rounded),
+                                label: const Text('سجل الأثر'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
                         const Center(
                           child: Text(
                               'سجلك محفوظ محلياً، والتحليل السحابي لا يعمل إلا بموافقتك',
@@ -481,14 +515,14 @@ class _PulseButtonState extends State<_PulseButton>
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
+                colors: [WaqfaColors.primary, WaqfaColors.amadLavender],
                 begin: Alignment.centerRight,
                 end: Alignment.centerLeft,
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6C63FF).withOpacity(_glow.value),
+                  color: WaqfaColors.primary.withOpacity(_glow.value),
                   blurRadius: 20,
                   offset: const Offset(0, 6),
                 ),

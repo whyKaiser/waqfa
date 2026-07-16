@@ -57,4 +57,26 @@ void main() {
     );
     expect(result.proposedRisk, inInclusiveRange(0, 100));
   });
+
+  test('يرفض المبالغ السالبة وغير المحدودة', () {
+    expect(
+      () => FinancialDecisionEngine.analyze(
+        profile,
+        proposedInstallment: -1,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => FinancialDecisionEngine.analyze(
+        const FinancialProfile(
+          salary: double.infinity,
+          fixedExpenses: 0,
+          variableExpenses: 0,
+          currentBnpl: 0,
+        ),
+        proposedInstallment: 0,
+      ),
+      throwsArgumentError,
+    );
+  });
 }

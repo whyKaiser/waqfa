@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'generative_ai_provider.dart';
+import 'goal_plan_engine.dart';
 import 'profile_service.dart';
 
 /// نتيجة تحليل فاتورة مصوّرة.
@@ -91,14 +92,74 @@ class FinancialAnalysisResult {
   });
 }
 
+class GoalPlanNarrativeWeek {
+  final int week;
+  final List<String> actions;
+  final double targetAmount;
+  final double safeDailySpend;
+  final String reason;
+
+  const GoalPlanNarrativeWeek({
+    required this.week,
+    required this.actions,
+    required this.targetAmount,
+    required this.safeDailySpend,
+    required this.reason,
+  });
+}
+
+class GoalPlanNarrative {
+  final String goalType;
+  final String diagnosis;
+  final String mainProblem;
+  final List<String> riskFactors;
+  final List<String> questionsToAsk;
+  final List<GoalPlanNarrativeWeek> recommendedPlan;
+  final String minimumSavingIntervention;
+  final String recoveryTimeExplanation;
+  final List<String> warnings;
+  final String nextStep;
+  final List<String> calculatedValuesUsed;
+  final bool usedCloud;
+
+  const GoalPlanNarrative({
+    required this.goalType,
+    required this.diagnosis,
+    required this.mainProblem,
+    required this.riskFactors,
+    required this.questionsToAsk,
+    required this.recommendedPlan,
+    required this.minimumSavingIntervention,
+    required this.recoveryTimeExplanation,
+    required this.warnings,
+    required this.nextStep,
+    required this.calculatedValuesUsed,
+    required this.usedCloud,
+  });
+}
+
 class AiService {
   static const String _model = 'qwen/qwen3.6-27b';
   static const String _apiKey = String.fromEnvironment(
     'GROQ_API_KEY',
     defaultValue: '',
   );
+  static final GenerativeAiProvider _defaultProvider =
+      GroqGenerativeAiProvider(apiKey: _apiKey, model: _model);
+  static GenerativeAiProvider _provider = _defaultProvider;
 
-  static bool get isConfigured => _apiKey.trim().isNotEmpty;
+  static bool get isConfigured => _provider.isConfigured;
+  static String get providerName => _provider.name;
+
+  /// Allows a bank pilot, backend proxy, or tests to replace Groq without
+  /// changing financial product logic.
+  static void configureProvider(GenerativeAiProvider provider) {
+    _provider = provider;
+  }
+
+  static void useDefaultProvider() {
+    _provider = _defaultProvider;
+  }
 
   static Future<FinancialAnalysisResult> analyzeFinances({
     required double salary,
@@ -132,7 +193,7 @@ class AiService {
     final profileCtx = (await ProfileService.load()).toPromptContext();
 
     final prompt =
-        '''أنت مستشار مالي سعودي متخصص في حماية الشباب من الديون. حلل الوضع المالي التالي وأعطِ تقييماً شخصياً باللغة العربية العامية السعودية البسيطة.
+        '''أنت مساعد وقاية مالية يشرح نتيجة محسوبة مسبقًا، ولست مستشارًا ماليًا مرخصًا. لخّص الوضع التالي بلغة عربية سعودية بسيطة دون اختراع أي رقم.
 
 البيانات:
 - الراتب الشهري: $salary ريال
@@ -144,50 +205,194 @@ class AiService {
 - نسبة المصاريف الكلية: $totalRatio%
 ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
 
-اكتب تحليلاً مفيداً بالعربية الفصحى البسيطة (4-5 جمل فقط). ابدأ بأهم ملاحظة على أرقامه، راعِ أهدافه وفئته العمرية ونوع دخله في نصيحتك، ثم إذا ذكر قلقاً مالياً قدّم له خطوات عملية محددة تحقق هدفه مع وضعه الحالي — كم يوفر شهرياً، متى يصل للهدف، وكيف يعدّل مصاريفه. بدون مقدمات أو تحيات، فقرة واحدة متصلة.''';
+اكتب شرحًا من 4-5 جمل فقط. استخدم الأرقام أعلاه كما هي، واشرح أهم عامل وخطوة عامة آمنة. لا تحسب مبلغ ادخار أو مدة هدف من نفسك، ولا تقترح استثمارًا أو تمويلًا، ولا تعط ضمانًا. بدون مقدمات أو تحيات.''';
 
-    try {
-      final response = await http
-          .post(
-            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_apiKey',
-            },
-            body: jsonEncode({
-              'model': _model,
-              'reasoning_effort': 'none',
-              'reasoning_format': 'hidden',
-              'temperature': 0.6,
-              'messages': [
-                {
-                  'role': 'system',
-                  'content':
-                      'أنت مستشار مالي سعودي. تكتب فقرة واحدة قصيرة (4-5 جمل) بالعربية العامية السعودية البسيطة. '
-                          'ممنوع منعاً باتاً: أي حسابات رياضية، أرقام خطوة بخطوة، قوائم مرقمة، عناوين، أو مقدمات وتحيات. '
-                          'فقط نص نصيحة متصل ومباشر.'
-                },
-                {'role': 'user', 'content': prompt}
-              ],
-              'max_tokens': 350,
-            }),
-            // شبكة معلّقة (تتصل ولا ترد) ما ترمي استثناء — بدون مهلة يلف السبنر للأبد
-          )
-          .timeout(const Duration(seconds: 12));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['choices'][0]['message']['content'];
-        if (content is String && content.trim().isNotEmpty) {
-          return FinancialAnalysisResult(text: content, usedCloud: true);
-        }
-        return localResult();
-      } else {
-        return localResult();
-      }
-    } catch (_) {
-      return localResult();
+    final response = await _provider.generateText(
+      AiTextRequest(
+        systemPrompt:
+            'أنت مساعد وقاية مالية، ولست مستشارًا ماليًا مرخصًا. اشرح فقط القيم المحسوبة المقدمة لك، '
+            'ولا تخترع أرقامًا أو ضمانات أو توصيات استثمارية. اكتب 4-5 جمل عربية واضحة.',
+        userPrompt: prompt,
+        temperature: .5,
+        maxTokens: 350,
+      ),
+    );
+    if (response.ok && response.content.trim().isNotEmpty) {
+      return FinancialAnalysisResult(
+        text: response.content.trim(),
+        usedCloud: true,
+      );
     }
+    return localResult();
+  }
+
+  /// Turns a deterministic [GoalPlan] into a structured explanation. The
+  /// provider may rewrite language only; every amount shown in the returned
+  /// plan is copied from the engine output.
+  static Future<GoalPlanNarrative> buildGoalPlanNarrative({
+    required GoalPlan plan,
+    bool allowCloud = false,
+  }) async {
+    final local = _localGoalNarrative(plan);
+    if (!allowCloud || !isConfigured) return local;
+
+    final calculated = {
+      'goalType': plan.goalType.name,
+      'targetAmount': plan.targetAmount,
+      'requestedTargetDays': plan.requestedTargetDays,
+      'effectiveTargetDays': plan.effectiveTargetDays,
+      'plannedMonthlyContribution': plan.plannedMonthlyContribution,
+      'safetyReserve': plan.safetyReserve,
+      'safeDailySpend': plan.safeDailySpend,
+      'feasibility': plan.feasibility.name,
+      'minimumAdjustment': {
+        'kind': plan.minimumAdjustment.recommendedKind.name,
+        'variableReduction':
+            plan.minimumAdjustment.requiredVariableExpenseReduction,
+        'extensionDays': plan.minimumAdjustment.minimumExtensionDays,
+      },
+      'weeklyPlan': plan.weeklySteps
+          .map(
+            (step) => {
+              'week': step.weekNumber,
+              'targetAmount': step.contributionTarget,
+              'safeDailySpend': plan.safeDailySpend,
+              'action': step.action,
+            },
+          )
+          .toList(),
+    };
+    final response = await _provider.generateText(
+      AiTextRequest(
+        requireJson: true,
+        maxTokens: 900,
+        temperature: .2,
+        systemPrompt:
+            'أنت مساعد وقاية مالية، ولست مستشارًا ماليًا مرخصًا. الأرقام محسوبة من محرك وقفة. '
+            'ممنوع تغييرها أو حساب أرقام جديدة أو تقديم استثمار أو تمويل أو ضمان. أخرج JSON فقط.',
+        userPrompt:
+            '''حوّل البيانات المحسوبة التالية إلى شرح عربي واضح. انسخ الأرقام كما هي فقط:
+${jsonEncode(calculated)}
+
+أعد JSON بهذا الشكل:
+{"diagnosis":"","mainProblem":"","riskFactors":[],"questionsToAsk":[],"recommendedPlan":[],"warnings":[],"nextStep":""}
+لا تضف حقائق أو أرقامًا غير موجودة.''',
+      ),
+    );
+    if (!response.ok) return local;
+    return _parseGoalNarrative(response.content, plan) ?? local;
+  }
+
+  static GoalPlanNarrative? _parseGoalNarrative(
+    String content,
+    GoalPlan plan,
+  ) {
+    try {
+      final start = content.indexOf('{');
+      final end = content.lastIndexOf('}');
+      if (start < 0 || end <= start) return null;
+      final json = jsonDecode(content.substring(start, end + 1));
+      if (json is! Map) return null;
+      final data = Map<String, dynamic>.from(json);
+      List<String> strings(dynamic value) => value is List
+          ? value
+              .map((item) => item.toString())
+              .where((item) => item.isNotEmpty)
+              .toList()
+          : <String>[];
+      final diagnosis = data['diagnosis']?.toString().trim() ?? '';
+      final mainProblem = data['mainProblem']?.toString().trim() ?? '';
+      final nextStep = data['nextStep']?.toString().trim() ?? '';
+      if (diagnosis.isEmpty || mainProblem.isEmpty || nextStep.isEmpty) {
+        return null;
+      }
+      final local = _localGoalNarrative(plan);
+      return GoalPlanNarrative(
+        goalType: plan.goalType.name,
+        diagnosis: diagnosis,
+        mainProblem: mainProblem,
+        riskFactors: strings(data['riskFactors']),
+        questionsToAsk: strings(data['questionsToAsk']),
+        // Numeric actions stay engine-owned even when cloud wording succeeds.
+        recommendedPlan: local.recommendedPlan,
+        minimumSavingIntervention: local.minimumSavingIntervention,
+        recoveryTimeExplanation: local.recoveryTimeExplanation,
+        warnings: strings(data['warnings']),
+        nextStep: nextStep,
+        calculatedValuesUsed: local.calculatedValuesUsed,
+        usedCloud: true,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static GoalPlanNarrative _localGoalNarrative(GoalPlan plan) {
+    final diagnosis = switch (plan.feasibility) {
+      GoalFeasibility.feasible =>
+        'الهدف ممكن ضمن المدة المطلوبة مع حماية احتياطي الأمان.',
+      GoalFeasibility.feasibleWithVariableReduction =>
+        'الهدف ممكن بعد تعديل صغير في المصروف المتغير.',
+      GoalFeasibility.feasibleWithExtension =>
+        'الهدف ممكن، لكن الموعد المطلوب يضغط الهامش الآمن.',
+      GoalFeasibility.unreachable =>
+        'الهدف غير قابل للتمويل بأمان من البيانات الحالية.',
+    };
+    final adjustment = switch (plan.minimumAdjustment.recommendedKind) {
+      GoalAdjustmentKind.none => 'لا يحتاج الهدف إلى تعديل إضافي.',
+      GoalAdjustmentKind.reduceVariableSpending =>
+        'خفض المصروف المتغير ${plan.minimumAdjustment.requiredVariableExpenseReduction.round()} ريال شهريًا.',
+      GoalAdjustmentKind.extendDuration =>
+        'مدّد المدة ${plan.minimumAdjustment.minimumExtensionDays} يومًا لتصبح ${plan.effectiveTargetDays} يومًا.',
+      GoalAdjustmentKind.unavailable =>
+        'خفّض مبلغ الهدف أو أضف دخلًا ثابتًا قبل اعتماد الخطة.',
+    };
+    final weeks = plan.weeklySteps
+        .map(
+          (step) => GoalPlanNarrativeWeek(
+            week: step.weekNumber,
+            actions: [step.action, step.checkpoint],
+            targetAmount: step.contributionTarget,
+            safeDailySpend: plan.safeDailySpend,
+            reason: 'يحافظ على احتياطي ${plan.safetyReserve.round()} ريال.',
+          ),
+        )
+        .toList(growable: false);
+    return GoalPlanNarrative(
+      goalType: plan.goalType.name,
+      diagnosis: diagnosis,
+      mainProblem: plan.meetsRequestedDeadline
+          ? 'المطلوب هو الالتزام بالمساهمة دون لمس الاحتياطي.'
+          : 'الموعد أقصر من قدرة الفائض الآمن الحالي.',
+      riskFactors: [
+        'المساهمة الشهرية المطلوبة ${plan.requiredMonthlyContribution.round()} ريال.',
+        'احتياطي الأمان المحمي ${plan.safetyReserve.round()} ريال.',
+      ],
+      questionsToAsk: const [
+        'هل المبلغ والموعد ما زالا مناسبين؟',
+        'هل يوجد مصروف غير أساسي يمكن تخفيفه مؤقتًا؟',
+      ],
+      recommendedPlan: weeks,
+      minimumSavingIntervention: adjustment,
+      recoveryTimeExplanation:
+          'الخطة لا تستخدم احتياطي الأمان؛ أي تعثر في خطوة يعيد الحساب بدل مضاعفة الضغط.',
+      warnings: const [
+        'هذه خطة نموذج أولي وليست ضمانًا للوصول إلى الهدف.',
+        'لا تعتمد على دخل غير مؤكد قبل دخوله فعليًا.',
+      ],
+      nextStep: plan.isReachable
+          ? 'ابدأ أول تحويل ثم راجع الخطة نهاية الأسبوع.'
+          : 'عدّل المبلغ أو المدة وأعد الحساب.',
+      calculatedValuesUsed: const [
+        'targetAmount',
+        'effectiveTargetDays',
+        'plannedMonthlyContribution',
+        'safetyReserve',
+        'safeDailySpend',
+        'weeklyPlan',
+      ],
+      usedCloud: false,
+    );
   }
 
   // تحليل صورة فاتورة عبر نموذج الرؤية — استخراج وتصنيف وتقييم.
@@ -206,65 +411,43 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
         '"monthly_installment":القسط الشهري كرقم إن كان ظاهرًا وإلا 0,'
         '"note":"ملاحظة قصيرة بالعربية عن هذا الصرف ونصيحة واحدة"}. '
         'لا تخمّن القسط الشهري ولا تعتبر إجمالي الشراء قسطًا شهريًا.';
-    try {
-      final response = await http
-          .post(
-            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_apiKey',
-            },
-            body: jsonEncode({
-              'model': _model,
-              'reasoning_effort': 'none',
-              'reasoning_format': 'hidden',
-              'temperature': 0.2,
-              'max_tokens': 400,
-              'response_format': {'type': 'json_object'},
-              'messages': [
-                {
-                  'role': 'user',
-                  'content': [
-                    {'type': 'text', 'text': prompt},
-                    {
-                      'type': 'image_url',
-                      'image_url': {'url': 'data:image/jpeg;base64,$base64Jpeg'}
-                    },
-                  ],
-                }
-              ],
-            }),
-            // مهلة أطول: رفع صورة أبطأ من طلب نصي
-          )
-          .timeout(const Duration(seconds: 25));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content =
-            data['choices'][0]['message']['content'] as String? ?? '';
-        return ReceiptResult.parse(content);
-      }
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        return ReceiptResult.error(
-          'خدمة تحليل الفواتير غير مهيأة في هذه النسخة. ثبّت نسخة وقفة المحدثة.',
-        );
-      }
-      if (response.statusCode == 413) {
-        return ReceiptResult.error(
-          'حجم الصورة كبير. التقط الفاتورة من مسافة أقرب وحاول مرة ثانية.',
-        );
-      }
-      if (response.statusCode == 429) {
-        return ReceiptResult.error(
-          'خدمة التحليل مشغولة الآن. انتظر لحظة وحاول مرة ثانية.',
-        );
-      }
+    final response = await _provider.analyzeImage(
+      AiImageRequest(
+        prompt: prompt,
+        base64Jpeg: base64Jpeg,
+        temperature: .2,
+        maxTokens: 400,
+      ),
+    );
+    if (response.ok) return ReceiptResult.parse(response.content);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      return ReceiptResult.error(
+        'خدمة تحليل الفواتير غير مهيأة في هذه النسخة. ثبّت نسخة وقفة المحدثة.',
+      );
+    }
+    if (response.statusCode == 413) {
+      return ReceiptResult.error(
+        'حجم الصورة كبير. التقط الفاتورة من مسافة أقرب وحاول مرة ثانية.',
+      );
+    }
+    if (response.statusCode == 429) {
+      return ReceiptResult.error(
+        'خدمة التحليل مشغولة الآن. انتظر لحظة وحاول مرة ثانية.',
+      );
+    }
+    if (response.statusCode > 0) {
       return ReceiptResult.error(
         'تعذّر تحليل الفاتورة الآن (${response.statusCode}). حاول مرة ثانية.',
       );
-    } catch (_) {
-      return ReceiptResult.error(
-          'تعذّر الاتصال. تأكد من الإنترنت وحاول مرة ثانية.');
     }
+    if (response.errorCode == 'not_configured') {
+      return ReceiptResult.error(
+        'خدمة تحليل الفواتير غير مهيأة في هذه النسخة. ثبّت نسخة وقفة المحدثة.',
+      );
+    }
+    return ReceiptResult.error(
+      'تعذّر الاتصال. تأكد من الإنترنت وحاول مرة ثانية.',
+    );
   }
 
   // شرح مصطلح مالي ببساطة — لمسار التعليم المالي التفاعلي.
@@ -274,38 +457,18 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
         'اشرح المصطلح المالي "$term" لشاب سعودي مبتدئ، بالعربية البسيطة، '
         'في 3-4 جمل قصيرة فقط، مع مثال واقعي واحد من الحياة اليومية. '
         'بدون مقدمات ولا عناوين ولا قوائم — فقرة واحدة متصلة.';
-    try {
-      final response = await http
-          .post(
-            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_apiKey',
-            },
-            body: jsonEncode({
-              'model': _model,
-              'reasoning_effort': 'none',
-              'reasoning_format': 'hidden',
-              'temperature': 0.6,
-              'messages': [
-                {
-                  'role': 'system',
-                  'content':
-                      'أنت معلّم مالي سعودي تشرح المصطلحات ببساطة شديدة لمبتدئين. '
-                          'فقرة واحدة قصيرة، بدون حسابات أو قوائم أو عناوين.'
-                },
-                {'role': 'user', 'content': prompt}
-              ],
-              'max_tokens': 300,
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['choices'][0]['message']['content'];
-        if (content is String && content.trim().isNotEmpty) return content;
-      }
-    } catch (_) {}
+    final response = await _provider.generateText(
+      AiTextRequest(
+        systemPrompt:
+            'أنت معلّم مالي سعودي تشرح المصطلحات ببساطة، دون توصية استثمارية شخصية.',
+        userPrompt: prompt,
+        temperature: .5,
+        maxTokens: 300,
+      ),
+    );
+    if (response.ok && response.content.trim().isNotEmpty) {
+      return response.content.trim();
+    }
     return _termFallback(term);
   }
 
@@ -318,7 +481,7 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
       'الادخار':
           'الادخار يعني تحجز جزء من دخلك قبل ما تصرفه، حتى لو مبلغ بسيط شهرياً. القاعدة الذهبية: ادفع لنفسك أولاً — حوّل مبلغ ثابت لحساب توفير أول ما يدخل الراتب.',
       'الاستثمار':
-          'الاستثمار يعني تشغّل فلوسك لتنمو مع الوقت بدل ما تبقى ساكنة، مثل الأسهم أو الصناديق. فيه مخاطرة، فابدأ بمبلغ صغير تقدر تتحمّل خسارته وتعلّم بالتدريج.',
+          'الاستثمار يعني توظيف المال بهدف نموه مع الوقت، مثل الأسهم أو الصناديق. العائد غير مضمون وقد ينخفض رأس المال، وتختلف الملاءمة حسب الهدف والمدة والقدرة على تحمّل المخاطر. هذا شرح تعليمي وليس توصية شخصية.',
       'الميزانية الشخصية':
           'الميزانية الشخصية يعني تعرف وين تروح فلوسك قبل ما تروح — تقسّم راتبك أول الشهر: التزامات ثابتة، مصاريف يومية، وادخار. مثال بسيط: قاعدة 50/30/20 — نصف الراتب للضروريات، 30% لرغباتك، و20% توفير وسداد ديون.',
       'نسبة الدين إلى الدخل':

@@ -5,7 +5,10 @@ import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../services/notification_service.dart';
 import '../services/financial_decision_engine.dart';
+import '../services/financial_prevention_engine.dart';
+import '../theme/waqfa_theme.dart';
 import 'simulator_screen.dart';
+import 'waqfa_plan_screen.dart';
 
 class ResultScreen extends StatefulWidget {
   final double salary;
@@ -43,6 +46,7 @@ class _ResultScreenState extends State<ResultScreen>
   late int _totalRatio;
   late _RiskLevel _riskLevel;
   late DecisionAnalysis _decisionAnalysis;
+  late FinancialPreventionAnalysis _prevention;
 
   @override
   void initState() {
@@ -87,13 +91,18 @@ class _ResultScreenState extends State<ResultScreen>
     final safeSalary = widget.salary > 0 ? widget.salary : 1;
     _bnplRatio = ((widget.bnpl / safeSalary) * 100).round();
     _totalRatio = ((total / safeSalary) * 100).round();
+    final profile = FinancialProfile(
+      salary: widget.salary,
+      fixedExpenses: widget.fixed,
+      variableExpenses: widget.variable,
+      currentBnpl: widget.bnpl,
+    );
     _decisionAnalysis = FinancialDecisionEngine.analyze(
-      FinancialProfile(
-        salary: widget.salary,
-        fixedExpenses: widget.fixed,
-        variableExpenses: widget.variable,
-        currentBnpl: widget.bnpl,
-      ),
+      profile,
+      proposedInstallment: 0,
+    );
+    _prevention = FinancialPreventionEngine.analyze(
+      profile,
       proposedInstallment: 0,
     );
     if (_compositeScore >= FinancialDecisionEngine.dangerThreshold) {
@@ -344,13 +353,7 @@ class _ResultScreenState extends State<ResultScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              _QuickTips(riskLevel: _riskLevel),
-              const SizedBox(height: 20),
-              _ForecastCard(
-                salary: widget.salary,
-                remaining: _remaining,
-                bnplRatio: _bnplRatio,
-              ),
+              _PreventionSnapshot(prevention: _prevention),
               const SizedBox(height: 16),
               // جدار حماية القرار — لحظة العرض الرئيسية أمام لجنة التحكيم
               SizedBox(
@@ -370,12 +373,33 @@ class _ResultScreenState extends State<ResultScreen>
                   icon: const Icon(Icons.shield_outlined, size: 20),
                   label: const Text('وقفة قبل تدفع — اختبر قرارك'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
+                    backgroundColor: WaqfaColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
                   ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => WaqfaPlanScreen(
+                        initialProfile: FinancialProfile(
+                          salary: widget.salary,
+                          fixedExpenses: widget.fixed,
+                          variableExpenses: widget.variable,
+                          currentBnpl: widget.bnpl,
+                        ),
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.route_outlined),
+                  label: const Text('ابنِ خطة وقفة لهدفك'),
                 ),
               ),
               const SizedBox(height: 12),
@@ -569,156 +593,111 @@ class _ExpenseChart extends StatelessWidget {
   }
 }
 
-class _QuickTips extends StatelessWidget {
-  final _RiskLevel riskLevel;
-  const _QuickTips({required this.riskLevel});
+class _PreventionSnapshot extends StatelessWidget {
+  final FinancialPreventionAnalysis prevention;
+
+  const _PreventionSnapshot({required this.prevention});
 
   @override
   Widget build(BuildContext context) {
-    final tips = switch (riskLevel) {
-      _RiskLevel.danger => [
-          'أوقف كل أقساط BNPL الجديدة فوراً',
-          'ركّز على سداد الأقساط الحالية أولاً',
-          'راجع مصاريفك وحذف أي شي غير ضروري'
-        ],
-      _RiskLevel.warning => [
-          'لا تضيف أي قسط جديد هذا الشهر',
-          'حاول تخفض مصاريف متغيرة بـ 10%',
-          'وفّر 200 ريال على الأقل قبل الصرف'
-        ],
-      _RiskLevel.safe => [
-          'حوّل 10% من راتبك لحساب توفير',
-          'استمر على نفس النهج المالي',
-          'فكّر في استثمار صغير بالمتبقي'
-        ],
-    };
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.lightbulb_outline, color: Color(0xFFFFB347), size: 18),
-          SizedBox(width: 8),
-          Text('خطواتك الآن',
-              style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w500)),
-        ]),
-        const SizedBox(height: 12),
-        ...tips.asMap().entries.map((e) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child:
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                      color: const Color(0xFF6C63FF).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(6)),
-                  child: Center(
-                      child: Text('${e.key + 1}',
-                          style: const TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF6C63FF),
-                              fontWeight: FontWeight.w600))),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: Text(e.value,
-                        style: const TextStyle(
-                            fontSize: 13, color: Colors.white60, height: 1.5))),
-              ]),
-            )),
-      ]),
-    );
-  }
-}
-
-class _ForecastCard extends StatelessWidget {
-  final double salary, remaining;
-  final int bnplRatio;
-  const _ForecastCard(
-      {required this.salary, required this.remaining, required this.bnplRatio});
-
-  @override
-  Widget build(BuildContext context) {
-    final targetSave = salary * 0.1;
-    final affordableSave = remaining > 0 ? remaining * 0.5 : 0.0;
-    final monthlySave =
-        (targetSave < affordableSave ? targetSave : affordableSave).round();
-    final yearSave = monthlySave * 12;
-    final yearlyFlow = (remaining * 12).round();
-    final flowPositive = yearlyFlow >= 0;
-
-    // كم شهر تقريباً للوصول لمنطقة الخطر لو زادت الأقساط 5% من الراتب شهرياً
-    final monthsToDanger = bnplRatio >= 30 ? 0 : ((30 - bnplRatio) / 5).ceil();
-
-    final lines = <(IconData, String, Color)>[
-      if (monthlySave > 0)
-        (
-          Icons.savings_outlined,
-          'لو وفّرت $monthlySave ريال شهرياً، يصير عندك $yearSave ريال بعد سنة.',
-          const Color(0xFF6BCB77),
-        )
-      else
-        (
-          Icons.build_circle_outlined,
-          'ابدأ بإغلاق العجز وخفض المصروف قبل تحديد مبلغ ادخار شهري.',
-          const Color(0xFFFFB347),
-        ),
-      (
-        flowPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-        flowPositive
-            ? 'بنمطك الحالي، فائضك المتوقّع بعد سنة ≈ $yearlyFlow ريال.'
-            : 'تنبيه: بنمطك الحالي، عجزك المتوقّع بعد سنة ≈ ${yearlyFlow.abs()} ريال.',
-        flowPositive ? const Color(0xFF48CAE4) : const Color(0xFFFF6B6B),
-      ),
-      if (bnplRatio > 15 && monthsToDanger > 0)
-        (
-          Icons.warning_amber_rounded,
-          'لو ضفت قسط جديد كل شهر، توصل منطقة الخطر خلال $monthsToDanger ${monthsToDanger == 1 ? "شهر" : "أشهر"} تقريباً.',
-          const Color(0xFFFFB347),
-        ),
-    ];
+    final forecast = prevention.currentForecast;
+    final probability = (forecast.criticalProbability * 100).round();
+    final date = forecast.fallDay == null
+        ? 'لا يظهر خلال 90 يومًا'
+        : _dateAfter(forecast.fallDay!);
+    final safeDaily = prevention.safeDailySpend.round();
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        gradient: LinearGradient(
+          colors: [
+            WaqfaColors.amadLavender.withOpacity(.16),
+            WaqfaColors.primary.withOpacity(.06),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: WaqfaColors.amadLavender.withOpacity(.35)),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.auto_graph_rounded, color: Color(0xFF6C63FF), size: 18),
-          SizedBox(width: 8),
-          Text('توقّعاتك المالية',
-              style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w500)),
-        ]),
-        const SizedBox(height: 14),
-        ...lines.map((l) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child:
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(l.$1, color: l.$3, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: Text(l.$2,
-                        style: const TextStyle(
-                            fontSize: 13, color: Colors.white60, height: 1.6))),
-              ]),
-            )),
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.radar_rounded,
+                  color: WaqfaColors.amadLavender, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'نافذة الوقاية الحالية',
+                style: TextStyle(
+                  color: WaqfaColors.amadSand,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _line(
+            Icons.event_busy_outlined,
+            'تاريخ السقوط المالي',
+            date,
+            forecast.fallDay == null ? WaqfaColors.safe : WaqfaColors.danger,
+          ),
+          _line(
+            Icons.percent_rounded,
+            'احتمال الضغط في المحاكاة',
+            '$probability% (${forecast.criticalPaths}/${forecast.totalPaths} مسار)',
+            probability >= 60 ? WaqfaColors.danger : WaqfaColors.warning,
+          ),
+          _line(
+            Icons.account_balance_wallet_outlined,
+            'حد الإنفاق اليومي الآمن',
+            '$safeDaily ريال',
+            WaqfaColors.cyan,
+          ),
+          const SizedBox(height: 7),
+          Text(
+            forecast.disclosure,
+            style: const TextStyle(
+              color: Colors.white38,
+              fontSize: 9,
+              height: 1.55,
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _line(IconData icon, String label, String value, Color color) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+
+  String _dateAfter(int day) {
+    final date = DateTime.now().add(Duration(days: day + 1));
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
 
