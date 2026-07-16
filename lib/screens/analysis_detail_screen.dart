@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../services/storage_service.dart';
+import '../theme/app_theme.dart';
 
 class AnalysisDetailScreen extends StatelessWidget {
   final AnalysisRecord record;
@@ -8,9 +9,9 @@ class AnalysisDetailScreen extends StatelessWidget {
   const AnalysisDetailScreen({super.key, required this.record});
 
   Color get _riskColor => switch (record.riskLevel) {
-        'danger' => const Color(0xFFFF6B6B),
-        'warning' => const Color(0xFFFFB347),
-        _ => const Color(0xFF6BCB77),
+        'danger' => AppColors.danger,
+        'warning' => AppColors.copper,
+        _ => AppColors.success,
       };
 
   String get _riskLabel => switch (record.riskLevel) {
@@ -109,16 +110,16 @@ class AnalysisDetailScreen extends StatelessWidget {
                         label: 'المتبقي',
                         value: '${remaining > 0 ? remaining.toInt() : 0}',
                         color: remaining > 0
-                            ? const Color(0xFF6BCB77)
-                            : const Color(0xFFFF6B6B))),
+                            ? AppColors.success
+                            : AppColors.danger)),
                 const SizedBox(width: 10),
                 Expanded(
                     child: _StatCard(
                         label: 'BNPL',
                         value: '${record.bnplRatio}%',
                         color: record.bnplRatio > 20
-                            ? const Color(0xFFFF6B6B)
-                            : const Color(0xFF6BCB77))),
+                            ? AppColors.danger
+                            : AppColors.success)),
               ]),
               const SizedBox(height: 16),
 
@@ -143,22 +144,22 @@ class AnalysisDetailScreen extends StatelessWidget {
                         label: 'مصاريف ثابتة',
                         amount: record.fixed,
                         salary: record.salary,
-                        color: const Color(0xFF6C63FF)),
+                        color: AppColors.primary),
                     _ExpenseRow(
                         label: 'مصاريف متغيرة',
                         amount: record.variable,
                         salary: record.salary,
-                        color: const Color(0xFF48CAE4)),
+                        color: AppColors.info),
                     _ExpenseRow(
                         label: 'أقساط BNPL',
                         amount: record.bnpl,
                         salary: record.salary,
-                        color: const Color(0xFFFF6B6B)),
+                        color: AppColors.danger),
                     _ExpenseRow(
                         label: 'المتبقي',
                         amount: remaining > 0 ? remaining : 0,
                         salary: record.salary,
-                        color: const Color(0xFF6BCB77)),
+                        color: AppColors.success),
                   ],
                 ),
               ),
@@ -179,7 +180,7 @@ class AnalysisDetailScreen extends StatelessWidget {
                     children: [
                       const Row(children: [
                         Icon(Icons.psychology_outlined,
-                            color: Color(0xFF6C63FF), size: 18),
+                            color: AppColors.primary, size: 18),
                         SizedBox(width: 8),
                         Text('تحليل الذكاء الاصطناعي',
                             style:

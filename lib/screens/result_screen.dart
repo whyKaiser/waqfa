@@ -6,6 +6,7 @@ import '../services/storage_service.dart';
 import '../services/notification_service.dart';
 import '../services/financial_decision_engine.dart';
 import 'simulator_screen.dart';
+import '../theme/app_theme.dart';
 
 class ResultScreen extends StatefulWidget {
   final double salary;
@@ -200,7 +201,9 @@ class _ResultScreenState extends State<ResultScreen>
           ),
         ],
       ),
-      body: Directionality(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+        child: Directionality(
         textDirection: TextDirection.rtl,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -239,16 +242,16 @@ class _ResultScreenState extends State<ResultScreen>
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFB347).withOpacity(0.1),
+                    color: AppColors.copper.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color: const Color(0xFFFFB347).withOpacity(0.3)),
+                        color: AppColors.copper.withOpacity(0.3)),
                   ),
                   child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Icon(Icons.trending_up_rounded,
-                            color: Color(0xFFFFB347), size: 20),
+                            color: AppColors.copper, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
                             child: Text(_trend!.message,
@@ -267,16 +270,16 @@ class _ResultScreenState extends State<ResultScreen>
                           label: 'نسبة BNPL',
                           value: '$_bnplRatio%',
                           color: _bnplRatio > 20
-                              ? const Color(0xFFFF6B6B)
-                              : const Color(0xFF6BCB77))),
+                              ? AppColors.danger
+                              : AppColors.success)),
                   const SizedBox(width: 10),
                   Expanded(
                       child: _StatCard(
                           label: 'المصاريف',
                           value: '$_totalRatio%',
                           color: _totalRatio > 75
-                              ? const Color(0xFFFF6B6B)
-                              : const Color(0xFF6BCB77))),
+                              ? AppColors.danger
+                              : AppColors.success)),
                   const SizedBox(width: 10),
                   Expanded(
                       child: _StatCard(
@@ -307,7 +310,7 @@ class _ResultScreenState extends State<ResultScreen>
                   children: [
                     Row(children: [
                       const Icon(Icons.psychology_outlined,
-                          color: Color(0xFF6C63FF), size: 20),
+                          color: AppColors.primary, size: 20),
                       const SizedBox(width: 8),
                       Text(
                           widget.allowCloudAi
@@ -324,7 +327,7 @@ class _ResultScreenState extends State<ResultScreen>
                             child: Padding(
                                 padding: EdgeInsets.all(16),
                                 child: CircularProgressIndicator(
-                                    color: Color(0xFF6C63FF))))
+                                    color: AppColors.primary)))
                         : Text(_aiAnalysis ?? '',
                             style: Theme.of(context)
                                 .textTheme
@@ -360,7 +363,7 @@ class _ResultScreenState extends State<ResultScreen>
                   icon: const Icon(Icons.shield_outlined, size: 20),
                   label: const Text('وقفة قبل تدفع — اختبر قرارك'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -387,6 +390,7 @@ class _ResultScreenState extends State<ResultScreen>
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -405,9 +409,9 @@ class _RiskGauge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (riskLevel) {
-      _RiskLevel.danger => const Color(0xFFFF6B6B),
-      _RiskLevel.warning => const Color(0xFFFFB347),
-      _RiskLevel.safe => const Color(0xFF6BCB77),
+      _RiskLevel.danger => AppColors.danger,
+      _RiskLevel.warning => AppColors.copper,
+      _RiskLevel.safe => AppColors.success,
     };
     final label = switch (riskLevel) {
       _RiskLevel.danger => 'خطر',
@@ -501,10 +505,10 @@ class _ExpenseChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      ('مصاريف ثابتة', fixed, const Color(0xFF6C63FF)),
-      ('مصاريف متغيرة', variable, const Color(0xFF48CAE4)),
-      ('أقساط BNPL', bnpl, const Color(0xFFFF6B6B)),
-      ('المتبقي', remaining > 0 ? remaining : 0, const Color(0xFF6BCB77)),
+      ('مصاريف ثابتة', fixed, AppColors.primary),
+      ('مصاريف متغيرة', variable, AppColors.info),
+      ('أقساط BNPL', bnpl, AppColors.danger),
+      ('المتبقي', remaining > 0 ? remaining : 0, AppColors.success),
     ];
     return Container(
       padding: const EdgeInsets.all(20),
@@ -591,7 +595,7 @@ class _QuickTips extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Row(children: [
-          Icon(Icons.lightbulb_outline, color: Color(0xFFFFB347), size: 18),
+          Icon(Icons.lightbulb_outline, color: AppColors.copper, size: 18),
           SizedBox(width: 8),
           Text('خطواتك الآن',
               style: TextStyle(
@@ -608,13 +612,13 @@ class _QuickTips extends StatelessWidget {
                   width: 22,
                   height: 22,
                   decoration: BoxDecoration(
-                      color: const Color(0xFF6C63FF).withOpacity(0.2),
+                      color: AppColors.primary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(6)),
                   child: Center(
                       child: Text('${e.key + 1}',
                           style: const TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF6C63FF),
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w600))),
                 ),
                 const SizedBox(width: 10),
@@ -649,20 +653,20 @@ class _ForecastCard extends StatelessWidget {
       (
         Icons.savings_outlined,
         'لو وفّرت $monthlySave ريال شهرياً، يصير عندك $yearSave ريال بعد سنة.',
-        const Color(0xFF6BCB77),
+        AppColors.success,
       ),
       (
         flowPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
         flowPositive
             ? 'بنمطك الحالي، فائضك المتوقّع بعد سنة ≈ $yearlyFlow ريال.'
             : 'تنبيه: بنمطك الحالي، عجزك المتوقّع بعد سنة ≈ ${yearlyFlow.abs()} ريال.',
-        flowPositive ? const Color(0xFF48CAE4) : const Color(0xFFFF6B6B),
+        flowPositive ? AppColors.info : AppColors.danger,
       ),
       if (bnplRatio > 15 && monthsToDanger > 0)
         (
           Icons.warning_amber_rounded,
           'لو ضفت قسط جديد كل شهر، توصل منطقة الخطر خلال $monthsToDanger ${monthsToDanger == 1 ? "شهر" : "أشهر"} تقريباً.',
-          const Color(0xFFFFB347),
+          AppColors.copper,
         ),
     ];
 
@@ -676,7 +680,7 @@ class _ForecastCard extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Row(children: [
-          Icon(Icons.auto_graph_rounded, color: Color(0xFF6C63FF), size: 18),
+          Icon(Icons.auto_graph_rounded, color: AppColors.primary, size: 18),
           SizedBox(width: 8),
           Text('توقّعاتك المالية',
               style: TextStyle(

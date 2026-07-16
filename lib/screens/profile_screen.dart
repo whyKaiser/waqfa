@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/profile_service.dart';
+import '../theme/app_theme.dart';
 
 /// شاشة الملف التخصيصي — تجعل التخصيص جوهر التجربة.
 class ProfileScreen extends StatefulWidget {
@@ -11,7 +12,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const _accent = Color(0xFF6C63FF);
+  static const _accent = AppColors.primary;
 
   String _age = '';
   String _income = '';

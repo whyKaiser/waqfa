@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/storage_service.dart';
 import 'analysis_detail_screen.dart';
+import '../theme/app_theme.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -26,9 +27,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Color _riskColor(String level) => switch (level) {
-    'danger' => const Color(0xFFFF6B6B),
-    'warning' => const Color(0xFFFFB347),
-    _ => const Color(0xFF6BCB77),
+    'danger' => AppColors.danger,
+    'warning' => AppColors.copper,
+    _ => AppColors.success,
   };
 
   String _riskLabel(String level) => switch (level) {
@@ -60,7 +61,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 builder: (ctx) => Directionality(
                   textDirection: TextDirection.rtl,
                   child: AlertDialog(
-                    backgroundColor: const Color(0xFF1A1A2E),
+                    backgroundColor: AppColors.surface,
                     title: const Text('حذف كل السجل؟', style: TextStyle(color: Colors.white, fontSize: 17)),
                     content: const Text('راح تفقد كل تحليلاتك السابقة ورسم الاتجاه. ما تقدر تتراجع.',
                         style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.6)),
@@ -71,7 +72,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('حذف', style: TextStyle(color: Color(0xFFFF6B6B))),
+                        child: const Text('حذف', style: TextStyle(color: AppColors.danger)),
                       ),
                     ],
                   ),
@@ -87,7 +88,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
+            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
             : _records.isEmpty
             ? Center(child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -212,10 +213,10 @@ class _TrendChart extends StatelessWidget {
               children: records.take(8).map((r) {
                 final h = (r.totalRatio / (maxRatio == 0 ? 1 : maxRatio));
                 final color = r.riskLevel == 'danger'
-                    ? const Color(0xFFFF6B6B)
+                    ? AppColors.danger
                     : r.riskLevel == 'warning'
-                    ? const Color(0xFFFFB347)
-                    : const Color(0xFF6BCB77);
+                    ? AppColors.copper
+                    : AppColors.success;
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 2),

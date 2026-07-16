@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'result_screen.dart';
 import 'connect_screen.dart';
 import 'receipt_scan_screen.dart';
+import '../theme/app_theme.dart';
 
 class InputScreen extends StatefulWidget {
   const InputScreen({super.key});
@@ -120,8 +121,8 @@ class _InputScreenState extends State<InputScreen> {
                   icon: const Icon(Icons.sync_rounded, size: 18),
                   label: const Text('جرّب ربط الحسابات (نموذج تجريبي)'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF48CAE4),
-                    side: const BorderSide(color: Color(0xFF48CAE4), width: 1),
+                    foregroundColor: AppColors.info,
+                    side: const BorderSide(color: AppColors.info, width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
@@ -136,8 +137,8 @@ class _InputScreenState extends State<InputScreen> {
                   icon: const Icon(Icons.receipt_long_outlined, size: 18),
                   label: const Text('صوّر فاتورة وأضِفها تلقائياً'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF6BCB77),
-                    side: const BorderSide(color: Color(0xFF6BCB77), width: 1),
+                    foregroundColor: AppColors.success,
+                    side: const BorderSide(color: AppColors.success, width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
@@ -208,7 +209,7 @@ class _InputScreenState extends State<InputScreen> {
                 child: SwitchListTile.adaptive(
                   value: _allowCloudAi,
                   onChanged: (value) => setState(() => _allowCloudAi = value),
-                  activeColor: const Color(0xFF6C63FF),
+                  activeColor: AppColors.primary,
                   title: const Text(
                     'تحليل سحابي اختياري',
                     style: TextStyle(color: Colors.white70, fontSize: 14),
@@ -226,7 +227,7 @@ class _InputScreenState extends State<InputScreen> {
                 child: ElevatedButton(
                   onPressed: _analyze,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
@@ -272,7 +273,7 @@ class _InputField extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: highlight
-              ? const Color(0xFF6C63FF).withOpacity(0.4)
+              ? AppColors.primary.withOpacity(0.4)
               : Colors.white.withOpacity(0.08),
         ),
       ),

@@ -5,6 +5,7 @@ import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'learn_screen.dart';
 import 'evidence_screen.dart';
+import '../theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,19 +31,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       Icons.credit_card_off_outlined,
       'يراقب أقساط BNPL',
       'تمارا، تابي، وغيرها',
-      const Color(0xFFFF6B6B)
+      AppColors.danger
     ),
     (
       Icons.warning_amber_outlined,
       'إنذار مبكر ذكي',
       'قبل ما تقع في المشكلة',
-      const Color(0xFFFFB347)
+      AppColors.copper
     ),
     (
       Icons.psychology_outlined,
       'تحليل بالذكاء الاصطناعي',
       'نصيحة شخصية بالعربي',
-      const Color(0xFF6C63FF)
+      AppColors.primary
     ),
   ];
 
@@ -125,8 +126,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Directionality(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+        child: SafeArea(
+          child: Directionality(
           textDirection: TextDirection.rtl,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -147,14 +150,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           height: 56,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
+                              colors: [AppColors.primary, AppColors.info],
                               begin: Alignment.topRight,
                               end: Alignment.bottomLeft,
                             ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF6C63FF).withOpacity(0.4),
+                                color: AppColors.primary.withOpacity(0.4),
                                 blurRadius: 16,
                                 offset: const Offset(0, 4),
                               ),
@@ -273,6 +276,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -481,14 +485,14 @@ class _PulseButtonState extends State<_PulseButton>
             padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
+                colors: [AppColors.primary, AppColors.info],
                 begin: Alignment.centerRight,
                 end: Alignment.centerLeft,
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6C63FF).withOpacity(_glow.value),
+                  color: AppColors.primary.withOpacity(_glow.value),
                   blurRadius: 20,
                   offset: const Offset(0, 6),
                 ),

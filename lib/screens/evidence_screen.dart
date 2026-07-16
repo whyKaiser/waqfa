@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/decision_outcome_service.dart';
 import '../services/risk_benchmark.dart';
+import '../theme/app_theme.dart';
 
 class EvidenceScreen extends StatefulWidget {
   const EvidenceScreen({super.key});
@@ -14,10 +15,10 @@ class _EvidenceScreenState extends State<EvidenceScreen> {
   late final BenchmarkMetrics _metrics;
   DecisionOutcomeSummary? _outcomes;
 
-  static const _accent = Color(0xFF6C63FF);
-  static const _cyan = Color(0xFF48CAE4);
-  static const _safe = Color(0xFF6BCB77);
-  static const _warning = Color(0xFFFFB347);
+  static const _accent = AppColors.primary;
+  static const _cyan = AppColors.info;
+  static const _safe = AppColors.success;
+  static const _warning = AppColors.copper;
 
   @override
   void initState() {
@@ -138,7 +139,7 @@ class _EvidenceScreenState extends State<EvidenceScreen> {
           _pill('اكتشاف صحيح ${_metrics.truePositives}', _safe),
           _pill('إنذار زائد ${_metrics.falsePositives}', _warning),
           _pill(
-              'حالة فائتة ${_metrics.falseNegatives}', const Color(0xFFFF6B6B)),
+              'حالة فائتة ${_metrics.falseNegatives}', AppColors.danger),
           _pill('أمان صحيح ${_metrics.trueNegatives}', _cyan),
         ]),
       );

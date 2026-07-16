@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/notification_service.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,15 +27,7 @@ class WaqfaApp extends StatelessWidget {
     return MaterialApp(
       title: 'وقفة',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1A1A2E),
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0F0F1A),
-        fontFamily: 'Cairo',
-        useMaterial3: true,
-      ),
+      theme: AppTheme.dark,
       home: showOnboarding ? const OnboardingScreen() : const HomeScreen(),
     );
   }

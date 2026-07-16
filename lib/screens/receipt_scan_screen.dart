@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/ai_service.dart';
+import '../theme/app_theme.dart';
 
 /// تصوير فاتورة وتحليلها بالرؤية — استخراج المبلغ والتصنيف ونصيحة،
 /// مع إمكانية إضافة المبلغ مباشرة لمصاريفك أو أقساطك.
@@ -14,7 +15,7 @@ class ReceiptScanScreen extends StatefulWidget {
 }
 
 class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
-  static const _accent = Color(0xFF6C63FF);
+  static const _accent = AppColors.primary;
   final _picker = ImagePicker();
 
   Uint8List? _image;
@@ -178,12 +179,12 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFFF6B6B).withOpacity(0.1),
+          color: AppColors.danger.withOpacity(0.1),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFFF6B6B).withOpacity(0.3)),
+          border: Border.all(color: AppColors.danger.withOpacity(0.3)),
         ),
         child: Row(children: [
-          const Icon(Icons.error_outline, color: Color(0xFFFF6B6B), size: 22),
+          const Icon(Icons.error_outline, color: AppColors.danger, size: 22),
           const SizedBox(width: 12),
           Expanded(
               child: Text(r.note,
@@ -205,11 +206,11 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                  color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                  color: AppColors.danger.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8)),
               child: const Text('تقسيط BNPL',
                   style: TextStyle(
-                      color: Color(0xFFFF6B6B),
+                      color: AppColors.danger,
                       fontSize: 11,
                       fontWeight: FontWeight.w600)),
             ),
@@ -239,7 +240,7 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
               icon: const Icon(Icons.add_rounded, size: 20),
               label: Text(r.isBnpl ? 'أضِف لأقساط BNPL' : 'أضِف لمصاريفي'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6BCB77),
+                backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(

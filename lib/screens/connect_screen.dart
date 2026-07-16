@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../theme/app_theme.dart';
 
 /// محاكاة المصرفية المفتوحة — دمج بيانات من مصادر متعددة.
 /// (نموذج تجريبي: يحاكي السحب الآمن من بنك + محفظة + مزوّدي BNPL)
@@ -21,7 +22,7 @@ class _Source {
 }
 
 class _ConnectScreenState extends State<ConnectScreen> {
-  static const _accent = Color(0xFF6C63FF);
+  static const _accent = AppColors.primary;
 
   // أرقام تجريبية مجمّعة (تطابق سيناريو العرض → حالة تحذير)
   static const _salary = 8000.0;
@@ -38,11 +39,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
     super.initState();
     _sources = [
       _Source('بنك الإنماء', 'الراتب والمصاريف الثابتة',
-          Icons.account_balance_outlined, const Color(0xFF6C63FF)),
+          Icons.account_balance_outlined, AppColors.primary),
       _Source('STC Pay', 'المصاريف والمحفظة',
-          Icons.account_balance_wallet_outlined, const Color(0xFF48CAE4)),
+          Icons.account_balance_wallet_outlined, AppColors.info),
       _Source('تمارا وتابي', 'أقساط BNPL', Icons.credit_card_outlined,
-          const Color(0xFFFF6B6B)),
+          AppColors.danger),
     ];
   }
 
@@ -91,20 +92,20 @@ class _ConnectScreenState extends State<ConnectScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFB347).withOpacity(0.12),
+                  color: AppColors.copper.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: const Color(0xFFFFB347).withOpacity(0.35)),
+                      color: AppColors.copper.withOpacity(0.35)),
                 ),
                 child: const Row(children: [
                   Icon(Icons.science_outlined,
-                      color: Color(0xFFFFB347), size: 20),
+                      color: AppColors.copper, size: 20),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'نموذج تجريبي — لا يتم أي اتصال فعلي بحساباتك',
                       style: TextStyle(
-                          color: Color(0xFFFFD18A),
+                          color: AppColors.highlight,
                           fontSize: 12,
                           fontWeight: FontWeight.w600),
                     ),
@@ -140,14 +141,14 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   padding: const EdgeInsets.all(16),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6BCB77).withOpacity(0.1),
+                    color: AppColors.success.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color: const Color(0xFF6BCB77).withOpacity(0.3)),
+                        color: AppColors.success.withOpacity(0.3)),
                   ),
                   child: const Row(children: [
                     Icon(Icons.check_circle,
-                        color: Color(0xFF6BCB77), size: 22),
+                        color: AppColors.success, size: 22),
                     SizedBox(width: 12),
                     Expanded(
                         child: Text(
@@ -171,7 +172,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
                           ? 'جاري تشغيل المحاكاة...'
                           : 'شغّل المحاكاة')),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _done ? const Color(0xFF6BCB77) : _accent,
+                    backgroundColor: _done ? AppColors.success : _accent,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.white.withOpacity(0.1),
                     disabledForegroundColor: Colors.white38,
@@ -200,7 +201,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
         break;
       case 2:
         trailing =
-            const Icon(Icons.check_circle, color: Color(0xFF6BCB77), size: 24);
+            const Icon(Icons.check_circle, color: AppColors.success, size: 24);
         break;
       default:
         trailing =
@@ -215,7 +216,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
             color: s.status == 2
-                ? const Color(0xFF6BCB77).withOpacity(0.3)
+                ? AppColors.success.withOpacity(0.3)
                 : Colors.white.withOpacity(0.08)),
       ),
       child: Row(children: [

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
+import '../theme/app_theme.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
@@ -36,7 +37,7 @@ class NotificationService {
           channelDescription: 'تنبيهات مالية',
           importance: Importance.high,
           priority: Priority.high,
-          color: Color(0xFF6C63FF),
+          color: AppColors.primary,
         ),
         iOS: DarwinNotificationDetails(),
       ),

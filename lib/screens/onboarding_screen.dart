@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
+import '../theme/app_theme.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -19,27 +20,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'تعرف هذا الشعور؟',
       subtitle:
           'آخر الشهر وما تعرف وين راحت فلوسك\nوأقساط تمارا وتابي تتراكم بدون ما تحس',
-      color: const Color(0xFFFF6B6B),
+      color: AppColors.danger,
     ),
     _OnboardingPage(
       icon: Icons.psychology_alt_outlined,
       title: 'وقفة يشوف اللي ما تشوفه',
       subtitle: 'يجمع كل أقساطك ومصاريفك\nويحسب نسبة الخطر على راتبك تلقائياً',
-      color: const Color(0xFF6C63FF),
+      color: AppColors.primary,
     ),
     _OnboardingPage(
       icon: Icons.notification_important_outlined,
       title: 'ينذرك قبل ما تقع',
       subtitle:
           'مو بعد ما تغرق في الديون\nبل قبلها — بتحليل ذكي وخطوة عملية واحدة',
-      color: const Color(0xFFFFB347),
+      color: AppColors.copper,
     ),
     _OnboardingPage(
       icon: Icons.verified_outlined,
       title: 'جاهز تبدأ؟',
       subtitle:
           'سجلك محفوظ على جوالك\nوالتحليل السحابي اختياري ولا يعمل إلا بموافقتك',
-      color: const Color(0xFF6BCB77),
+      color: AppColors.success,
       isLast: true,
     ),
   ];

@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/ai_service.dart';
+import '../theme/app_theme.dart';
 
 /// التعليم المالي التفاعلي — يشرح المصطلحات ببساطة عبر الذكاء الاصطناعي.
 class LearnScreen extends StatelessWidget {
   const LearnScreen({super.key});
 
   static const _terms = [
-    ('BNPL', 'اشترِ الآن وادفع لاحقاً', Icons.credit_card_outlined, Color(0xFFFF6B6B)),
-    ('التورق', 'تمويل متوافق مع الشريعة', Icons.swap_horiz_rounded, Color(0xFF48CAE4)),
-    ('الادخار', 'تأمين مستقبلك المالي', Icons.savings_outlined, Color(0xFF6BCB77)),
-    ('الاستثمار', 'تنمية فلوسك مع الوقت', Icons.trending_up_rounded, Color(0xFFFFB347)),
-    ('الميزانية الشخصية', 'توزيع دخلك بذكاء', Icons.pie_chart_outline, Color(0xFF6C63FF)),
-    ('نسبة الدين إلى الدخل', 'مقياس صحتك المالية', Icons.balance_outlined, Color(0xFFFF6B6B)),
+    ('BNPL', 'اشترِ الآن وادفع لاحقاً', Icons.credit_card_outlined, AppColors.danger),
+    ('التورق', 'تمويل متوافق مع الشريعة', Icons.swap_horiz_rounded, AppColors.info),
+    ('الادخار', 'تأمين مستقبلك المالي', Icons.savings_outlined, AppColors.success),
+    ('الاستثمار', 'تنمية فلوسك مع الوقت', Icons.trending_up_rounded, AppColors.copper),
+    ('الميزانية الشخصية', 'توزيع دخلك بذكاء', Icons.pie_chart_outline, AppColors.primary),
+    ('نسبة الدين إلى الدخل', 'مقياس صحتك المالية', Icons.balance_outlined, AppColors.danger),
   ];
 
   void _open(BuildContext context, String term) {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF15151F),
+      backgroundColor: AppColors.surfaceAlt,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -127,7 +128,7 @@ class _TermSheetState extends State<_TermSheet> {
             ),
             const SizedBox(height: 20),
             Row(children: [
-              const Icon(Icons.school_outlined, color: Color(0xFF6C63FF), size: 22),
+              const Icon(Icons.school_outlined, color: AppColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(widget.term, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
             ]),
@@ -135,7 +136,7 @@ class _TermSheetState extends State<_TermSheet> {
             _text == null
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+                    child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
                   )
                 : Text(_text!, style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.9)),
             const SizedBox(height: 8),

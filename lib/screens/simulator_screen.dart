@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/behavioral_learning_service.dart';
 import '../services/decision_outcome_service.dart';
 import '../services/financial_decision_engine.dart';
+import '../theme/app_theme.dart';
 
 /// وقفة قبل تدفع: جدار حماية يحاكي أثر قرار الشراء قبل الالتزام به.
 class SimulatorScreen extends StatefulWidget {
@@ -29,10 +30,10 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   DecisionOutcome? _recordedOutcome;
   InterventionStrategy _intervention = InterventionStrategy.coolingOff;
 
-  static const _danger = Color(0xFFFF6B6B);
-  static const _warning = Color(0xFFFFB347);
-  static const _safe = Color(0xFF6BCB77);
-  static const _accent = Color(0xFF6C63FF);
+  static const _danger = AppColors.danger;
+  static const _warning = AppColors.copper;
+  static const _safe = AppColors.success;
+  static const _accent = AppColors.primary;
 
   @override
   void initState() {
@@ -180,7 +181,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   Widget _decisionFeedback() => _section(
         icon: Icons.how_to_reg_outlined,
         title: 'بعد تنبيه وقفة، وش قررت؟',
-        color: const Color(0xFF48CAE4),
+        color: AppColors.info,
         child: _recordedOutcome != null
             ? const Row(children: [
                 Icon(Icons.check_circle, color: _safe, size: 20),
@@ -271,7 +272,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   Widget _cashFlow(DecisionAnalysis a) => _section(
         icon: Icons.timeline_rounded,
         title: 'توأمك المالي - توقع 90 يومًا',
-        color: const Color(0xFF48CAE4),
+        color: AppColors.info,
         child: Column(children: [
           Row(
             children: List.generate(
