@@ -149,4 +149,8 @@
 
 - Android Release: `build/app/outputs/flutter-apk/app-release.apk`.
 - iOS Release: `C:\Users\User\Desktop\Waqfa-1.1.0-build3.ipa` عبر Codemagic.
+- Codemagic Build ID: `6a593a8306f52dfb9cb2ff6e` من commit `2b5bc0e` — ناجح.
+- بيانات IPA: الاسم `Waqfa`، الإصدار `1.1.0`، البناء `3`، والحد الأدنى iOS `12.0`.
+- SHA-256: `EAAF2357E9098EF8D4CB189993F5D5D8A84B7D94EAA21965D9786971006F6BA6`.
+- ملف Codemagic غير موقّع ولا يحتوي `embedded.mobileprovision`؛ يوقّع عند التثبيت عبر Sideloadly/Apple ID.
 - GitHub: فرع `agent/waqfa-hackathon-release`، وPull Request رقم `1`.
