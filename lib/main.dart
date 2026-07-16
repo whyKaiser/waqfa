@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -33,7 +32,7 @@ class WaqfaApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF0F0F1A),
-        textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme),
+        fontFamily: 'Cairo',
         useMaterial3: true,
       ),
       home: showOnboarding ? const OnboardingScreen() : const HomeScreen(),

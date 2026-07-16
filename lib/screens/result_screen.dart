@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../services/ai_service.dart';
 import '../services/storage_service.dart';
 import '../services/notification_service.dart';
+import '../services/financial_decision_engine.dart';
 import 'simulator_screen.dart';
 
 class ResultScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class ResultScreen extends StatefulWidget {
   final double variable;
   final double bnpl;
   final String concern;
+  final bool allowCloudAi;
 
   const ResultScreen({
     super.key,
@@ -20,6 +22,7 @@ class ResultScreen extends StatefulWidget {
     required this.variable,
     required this.bnpl,
     required this.concern,
+    this.allowCloudAi = false,
   });
 
   @override
@@ -38,6 +41,7 @@ class _ResultScreenState extends State<ResultScreen>
   late int _bnplRatio;
   late int _totalRatio;
   late _RiskLevel _riskLevel;
+  late DecisionAnalysis _decisionAnalysis;
 
   @override
   void initState() {
@@ -61,16 +65,9 @@ class _ResultScreenState extends State<ResultScreen>
     }
   }
 
-  /// درجة مخاطر مركّبة (0-100) توزّن 3 عوامل قابلة للتفسير:
-  /// 40% أقساط BNPL، 40% إجمالي المصاريف، 20% اتجاه آخر 3 تحليلات.
-  /// لا تغيّر تصنيف آمن/تحذير/خطر — مؤشر تقني إضافي شفّاف يُعرض للمستخدم واللجنة.
-  int get _compositeScore {
-    final trendDelta = (_trend?.worsening ?? false) ? _trend!.deltaPct : 0;
-    final score = (_bnplRatio * 0.4) +
-        (_totalRatio * 0.4) +
-        (trendDelta.clamp(0, 100) * 0.2);
-    return score.round().clamp(0, 100);
-  }
+  /// نفس محرك القرار المستخدم في «وقفة قبل تدفع» حتى لا تظهر درجتان
+  /// متناقضتان للحالة المالية ذاتها.
+  int get _compositeScore => _decisionAnalysis.currentRisk;
 
   @override
   void dispose() {
@@ -84,9 +81,18 @@ class _ResultScreenState extends State<ResultScreen>
     final safeSalary = widget.salary > 0 ? widget.salary : 1;
     _bnplRatio = ((widget.bnpl / safeSalary) * 100).round();
     _totalRatio = ((total / safeSalary) * 100).round();
-    if (_bnplRatio > 30 || _totalRatio > 90) {
+    _decisionAnalysis = FinancialDecisionEngine.analyze(
+      FinancialProfile(
+        salary: widget.salary,
+        fixedExpenses: widget.fixed,
+        variableExpenses: widget.variable,
+        currentBnpl: widget.bnpl,
+      ),
+      proposedInstallment: 0,
+    );
+    if (_compositeScore >= 70) {
       _riskLevel = _RiskLevel.danger;
-    } else if (_bnplRatio > 20 || _totalRatio > 75) {
+    } else if (_compositeScore >= 45) {
       _riskLevel = _RiskLevel.warning;
     } else {
       _riskLevel = _RiskLevel.safe;
@@ -132,6 +138,7 @@ class _ResultScreenState extends State<ResultScreen>
       variable: widget.variable,
       bnpl: widget.bnpl,
       concern: widget.concern,
+      allowCloud: widget.allowCloudAi,
     );
     if (mounted) {
       setState(() {
@@ -160,7 +167,9 @@ class _ResultScreenState extends State<ResultScreen>
     b.writeln('نسبة أقساط BNPL: $_bnplRatio%');
     b.writeln('المتبقي: ${_remaining > 0 ? _remaining.toInt() : 0} ريال');
     b.writeln('');
-    b.writeln('🔎 تحليل الذكاء الاصطناعي:');
+    b.writeln(widget.allowCloudAi
+        ? '🔎 تحليل الذكاء الاصطناعي السحابي:'
+        : '🔎 التحليل المحلي:');
     b.writeln(_aiAnalysis ?? 'قيد التحليل...');
     b.writeln('');
     b.writeln('— تم إنشاؤه بواسطة تطبيق وقفة');
@@ -200,7 +209,7 @@ class _ResultScreenState extends State<ResultScreen>
               AnimatedBuilder(
                 animation: _animation,
                 builder: (_, __) => _RiskGauge(
-                  totalRatio: _totalRatio,
+                  riskScore: _compositeScore,
                   riskLevel: _riskLevel,
                   progress: _animation.value,
                 ),
@@ -217,7 +226,7 @@ class _ResultScreenState extends State<ResultScreen>
                   const Icon(Icons.analytics_outlined,
                       size: 14, color: Colors.white38),
                   const SizedBox(width: 6),
-                  Text('درجة المخاطر المركّبة: $_compositeScore/100',
+                  const Text('مؤشر وقائي تجريبي — ليس تقييمًا ائتمانيًا',
                       style: const TextStyle(
                           fontSize: 12,
                           color: Colors.white54,
@@ -300,7 +309,10 @@ class _ResultScreenState extends State<ResultScreen>
                       const Icon(Icons.psychology_outlined,
                           color: Color(0xFF6C63FF), size: 20),
                       const SizedBox(width: 8),
-                      Text('تحليل الذكاء الاصطناعي',
+                      Text(
+                          widget.allowCloudAi
+                              ? 'تحليل الذكاء الاصطناعي السحابي'
+                              : 'تحليل محلي — لم تُرسل بياناتك',
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -382,11 +394,11 @@ class _ResultScreenState extends State<ResultScreen>
 enum _RiskLevel { safe, warning, danger }
 
 class _RiskGauge extends StatelessWidget {
-  final int totalRatio;
+  final int riskScore;
   final _RiskLevel riskLevel;
   final double progress;
   const _RiskGauge(
-      {required this.totalRatio,
+      {required this.riskScore,
       required this.riskLevel,
       required this.progress});
 
@@ -415,13 +427,13 @@ class _RiskGauge extends StatelessWidget {
           height: 160,
           child: CustomPaint(
             painter: _GaugePainter(
-                value: (totalRatio / 100).clamp(0.0, 1.0) * progress,
+                value: (riskScore / 100).clamp(0.0, 1.0) * progress,
                 color: color),
             child: Center(
                 child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                  Text('$totalRatio%',
+                  Text('$riskScore/100',
                       style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w700,
@@ -433,7 +445,7 @@ class _RiskGauge extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        const Text('نسبة المصاريف من راتبك',
+        const Text('مؤشر الضغط المالي',
             style: TextStyle(fontSize: 13, color: Colors.white38)),
       ]),
     );

@@ -20,18 +20,54 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
   Uint8List? _image;
   bool _loading = false;
   ReceiptResult? _result;
+  bool _cloudConsentGranted = false;
+
+  Future<bool> _confirmCloudUpload() async {
+    if (_cloudConsentGranted) return true;
+    final accepted = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('موافقة على التحليل السحابي'),
+            content: const Text(
+              'لتحليل الفاتورة ستُرسل الصورة إلى مزود الذكاء الاصطناعي Groq. قد تحتوي الصورة على بيانات حساسة؛ اخفِ أي معلومات لا تريد إرسالها. هل توافق؟',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('لا، رجوع'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('أوافق وأرسل'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (accepted) _cloudConsentGranted = true;
+    return accepted;
+  }
 
   Future<void> _pick(ImageSource source) async {
+    if (!await _confirmCloudUpload() || !mounted) return;
     try {
-      final file = await _picker.pickImage(source: source, maxWidth: 1280, imageQuality: 70);
+      final file = await _picker.pickImage(
+          source: source, maxWidth: 1280, imageQuality: 70);
       if (file == null) return;
       final bytes = await file.readAsBytes();
       if (!mounted) return;
-      setState(() { _image = bytes; _result = null; _loading = true; });
+      setState(() {
+        _image = bytes;
+        _result = null;
+        _loading = true;
+      });
       final res = await AiService.analyzeReceipt(base64Encode(bytes));
       if (!mounted) return;
       HapticFeedback.lightImpact();
-      setState(() { _result = res; _loading = false; });
+      setState(() {
+        _result = res;
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -64,8 +100,9 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'صوّر أي فاتورة أو إيصال، ووقفة يقرأها ويصنّف صرفك تلقائياً.',
-                style: TextStyle(fontSize: 13, color: Colors.white54, height: 1.6),
+                'بعد موافقتك، يرسل وقفة صورة الفاتورة للتحليل السحابي ويستخرج المبلغ والتصنيف تلقائياً.',
+                style:
+                    TextStyle(fontSize: 13, color: Colors.white54, height: 1.6),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -79,28 +116,38 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
                 clipBehavior: Clip.antiAlias,
                 child: _image == null
                     ? const Center(
-                        child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.receipt_long_outlined, color: Colors.white24, size: 56),
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.receipt_long_outlined,
+                              color: Colors.white24, size: 56),
                           SizedBox(height: 8),
-                          Text('لا توجد صورة بعد', style: TextStyle(color: Colors.white38, fontSize: 13)),
+                          Text('لا توجد صورة بعد',
+                              style: TextStyle(
+                                  color: Colors.white38, fontSize: 13)),
                         ]),
                       )
                     : Image.memory(_image!, fit: BoxFit.contain),
               ),
               const SizedBox(height: 16),
               Row(children: [
-                Expanded(child: _btn('كاميرا', Icons.camera_alt_outlined, () => _pick(ImageSource.camera))),
+                Expanded(
+                    child: _btn('كاميرا', Icons.camera_alt_outlined,
+                        () => _pick(ImageSource.camera))),
                 const SizedBox(width: 12),
-                Expanded(child: _btn('من المعرض', Icons.photo_library_outlined, () => _pick(ImageSource.gallery))),
+                Expanded(
+                    child: _btn('من المعرض', Icons.photo_library_outlined,
+                        () => _pick(ImageSource.gallery))),
               ]),
               const SizedBox(height: 20),
               if (_loading)
                 const Padding(
                   padding: EdgeInsets.all(24),
-                  child: Center(child: Column(children: [
+                  child: Center(
+                      child: Column(children: [
                     CircularProgressIndicator(color: _accent),
                     SizedBox(height: 12),
-                    Text('يقرأ الفاتورة...', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                    Text('يقرأ الفاتورة...',
+                        style: TextStyle(color: Colors.white54, fontSize: 13)),
                   ])),
                 ),
               if (_result != null && !_loading) _resultCard(_result!),
@@ -138,7 +185,10 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
         child: Row(children: [
           const Icon(Icons.error_outline, color: Color(0xFFFF6B6B), size: 22),
           const SizedBox(width: 12),
-          Expanded(child: Text(r.note, style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5))),
+          Expanded(
+              child: Text(r.note,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 13, height: 1.5))),
         ]),
       );
     }
@@ -154,18 +204,32 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
           if (r.isBnpl)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0xFFFF6B6B).withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-              child: const Text('تقسيط BNPL', style: TextStyle(color: Color(0xFFFF6B6B), fontSize: 11, fontWeight: FontWeight.w600)),
+              decoration: BoxDecoration(
+                  color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8)),
+              child: const Text('تقسيط BNPL',
+                  style: TextStyle(
+                      color: Color(0xFFFF6B6B),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600)),
             ),
           const Spacer(),
-          Text('${r.total.toInt()} ريال', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+          Text('${r.total.toInt()} ريال',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800)),
         ]),
         const SizedBox(height: 14),
-        if (r.merchant.isNotEmpty) _row(Icons.store_outlined, 'المتجر', r.merchant),
-        if (r.category.isNotEmpty) _row(Icons.category_outlined, 'التصنيف', r.category),
+        if (r.merchant.isNotEmpty)
+          _row(Icons.store_outlined, 'المتجر', r.merchant),
+        if (r.category.isNotEmpty)
+          _row(Icons.category_outlined, 'التصنيف', r.category),
         const SizedBox(height: 6),
         if (r.note.isNotEmpty)
-          Text(r.note, style: const TextStyle(color: Colors.white60, fontSize: 13, height: 1.7)),
+          Text(r.note,
+              style: const TextStyle(
+                  color: Colors.white60, fontSize: 13, height: 1.7)),
         if (r.total > 0) ...[
           const SizedBox(height: 16),
           SizedBox(
@@ -178,7 +242,8 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
                 backgroundColor: const Color(0xFF6BCB77),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
             ),
           ),
@@ -193,8 +258,11 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
       child: Row(children: [
         Icon(icon, color: Colors.white38, size: 18),
         const SizedBox(width: 10),
-        Text('$label: ', style: const TextStyle(color: Colors.white38, fontSize: 13)),
-        Expanded(child: Text(value, style: const TextStyle(color: Colors.white70, fontSize: 13))),
+        Text('$label: ',
+            style: const TextStyle(color: Colors.white38, fontSize: 13)),
+        Expanded(
+            child: Text(value,
+                style: const TextStyle(color: Colors.white70, fontSize: 13))),
       ]),
     );
   }

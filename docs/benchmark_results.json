@@ -1,0 +1,21 @@
+{
+  "seed": 20260716,
+  "scope": "synthetic_90_day_scenarios",
+  "alert_threshold": 50,
+  "total_scenarios": 100,
+  "critical_scenarios": 47,
+  "non_critical_scenarios": 53,
+  "alerts": 54,
+  "confusion_matrix": {
+    "true_positive": 37,
+    "false_positive": 17,
+    "false_negative": 10,
+    "true_negative": 36
+  },
+  "critical_recall": 0.7872340425531915,
+  "false_alert_rate": 0.32075471698113206,
+  "median_lead_time_days": 3.0,
+  "mean_risk_reduction_points_if_installment_halved": 6.2592592592592595,
+  "critical_outcomes_avoided_if_installment_halved": 0.1702127659574468,
+  "disclosure": "النتائج تخص 100 سيناريو اصطناعي مولد آليًا ولا تمثل دقة على عملاء حقيقيين أو خفضًا مثبتًا للتعثر."
+}

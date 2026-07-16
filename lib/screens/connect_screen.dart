@@ -37,9 +37,12 @@ class _ConnectScreenState extends State<ConnectScreen> {
   void initState() {
     super.initState();
     _sources = [
-      _Source('بنك الإنماء', 'الراتب والمصاريف الثابتة', Icons.account_balance_outlined, const Color(0xFF6C63FF)),
-      _Source('STC Pay', 'المصاريف والمحفظة', Icons.account_balance_wallet_outlined, const Color(0xFF48CAE4)),
-      _Source('تمارا وتابي', 'أقساط BNPL', Icons.credit_card_outlined, const Color(0xFFFF6B6B)),
+      _Source('بنك الإنماء', 'الراتب والمصاريف الثابتة',
+          Icons.account_balance_outlined, const Color(0xFF6C63FF)),
+      _Source('STC Pay', 'المصاريف والمحفظة',
+          Icons.account_balance_wallet_outlined, const Color(0xFF48CAE4)),
+      _Source('تمارا وتابي', 'أقساط BNPL', Icons.credit_card_outlined,
+          const Color(0xFFFF6B6B)),
     ];
   }
 
@@ -75,7 +78,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: const Text('ربط حساباتك'),
+        title: const Text('محاكاة ربط الحسابات'),
       ),
       body: Directionality(
         textDirection: TextDirection.rtl,
@@ -83,6 +86,32 @@ class _ConnectScreenState extends State<ConnectScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFB347).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: const Color(0xFFFFB347).withOpacity(0.35)),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.science_outlined,
+                      color: Color(0xFFFFB347), size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'نموذج تجريبي — لا يتم أي اتصال فعلي بحساباتك',
+                      style: TextStyle(
+                          color: Color(0xFFFFD18A),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -95,8 +124,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'وقفة يجمع بياناتك من مصادرك المالية عبر المصرفية المفتوحة، باتصال آمن ومشفّر. بياناتك تبقى لك.',
-                      style: TextStyle(fontSize: 12, color: Colors.white60, height: 1.6),
+                      'هذه المحاكاة توضّح كيف يمكن لوقفة، بعد الترخيص وموافقة العميل، تجميع بيانات مصرفية مفتوحة. الأرقام المعروضة تجريبية بالكامل.',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.white60, height: 1.6),
                     ),
                   ),
                 ]),
@@ -112,28 +142,42 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF6BCB77).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFF6BCB77).withOpacity(0.3)),
+                    border: Border.all(
+                        color: const Color(0xFF6BCB77).withOpacity(0.3)),
                   ),
                   child: const Row(children: [
-                    Icon(Icons.check_circle, color: Color(0xFF6BCB77), size: 22),
+                    Icon(Icons.check_circle,
+                        color: Color(0xFF6BCB77), size: 22),
                     SizedBox(width: 12),
-                    Expanded(child: Text('تم استيراد بياناتك بنجاح من 3 مصادر',
-                        style: TextStyle(fontSize: 13, color: Colors.white70))),
+                    Expanded(
+                        child: Text(
+                            'اكتملت محاكاة الاستيراد من 3 مصادر تجريبية',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.white70))),
                   ]),
                 ),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _connecting && !_done ? null : (_done ? _useData : _connectAll),
-                  icon: Icon(_done ? Icons.analytics_outlined : Icons.sync_rounded, size: 20),
-                  label: Text(_done ? 'حلّل بياناتي الآن' : (_connecting ? 'جاري الربط...' : 'اربط الكل')),
+                  onPressed: _connecting && !_done
+                      ? null
+                      : (_done ? _useData : _connectAll),
+                  icon: Icon(
+                      _done ? Icons.analytics_outlined : Icons.sync_rounded,
+                      size: 20),
+                  label: Text(_done
+                      ? 'استخدم البيانات التجريبية'
+                      : (_connecting
+                          ? 'جاري تشغيل المحاكاة...'
+                          : 'شغّل المحاكاة')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _done ? const Color(0xFF6BCB77) : _accent,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.white.withOpacity(0.1),
                     disabledForegroundColor: Colors.white38,
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                 ),
               ),
@@ -148,13 +192,19 @@ class _ConnectScreenState extends State<ConnectScreen> {
     Widget trailing;
     switch (s.status) {
       case 1:
-        trailing = const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54));
+        trailing = const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: Colors.white54));
         break;
       case 2:
-        trailing = const Icon(Icons.check_circle, color: Color(0xFF6BCB77), size: 24);
+        trailing =
+            const Icon(Icons.check_circle, color: Color(0xFF6BCB77), size: 24);
         break;
       default:
-        trailing = const Icon(Icons.circle_outlined, color: Colors.white24, size: 24);
+        trailing =
+            const Icon(Icons.circle_outlined, color: Colors.white24, size: 24);
     }
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -163,20 +213,32 @@ class _ConnectScreenState extends State<ConnectScreen> {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(s.status == 2 ? 0.07 : 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: s.status == 2 ? const Color(0xFF6BCB77).withOpacity(0.3) : Colors.white.withOpacity(0.08)),
+        border: Border.all(
+            color: s.status == 2
+                ? const Color(0xFF6BCB77).withOpacity(0.3)
+                : Colors.white.withOpacity(0.08)),
       ),
       child: Row(children: [
         Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(color: s.color.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+              color: s.color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12)),
           child: Icon(s.icon, color: s.color, size: 22),
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(s.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(s.name,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14)),
             const SizedBox(height: 2),
-            Text(s.detail, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+            Text(s.detail,
+                style: const TextStyle(color: Colors.white38, fontSize: 12)),
           ]),
         ),
         trailing,

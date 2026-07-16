@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/behavioral_learning_service.dart';
+import '../services/decision_outcome_service.dart';
 import '../services/financial_decision_engine.dart';
 
 /// وقفة قبل تدفع: جدار حماية يحاكي أثر قرار الشراء قبل الالتزام به.
@@ -24,6 +26,8 @@ class SimulatorScreen extends StatefulWidget {
 class _SimulatorScreenState extends State<SimulatorScreen> {
   late final FinancialProfile _profile;
   late double _installment;
+  DecisionOutcome? _recordedOutcome;
+  InterventionStrategy _intervention = InterventionStrategy.coolingOff;
 
   static const _danger = Color(0xFFFF6B6B);
   static const _warning = Color(0xFFFFB347);
@@ -40,6 +44,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       currentBnpl: widget.bnpl,
     );
     _installment = (widget.salary * .08).clamp(100, 1200).toDouble();
+    BehavioralLearningService.recommend().then((value) {
+      if (mounted) setState(() => _intervention = value);
+    });
   }
 
   DecisionAnalysis get _analysis => FinancialDecisionEngine.analyze(
@@ -90,11 +97,28 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             const SizedBox(height: 14),
             _section(
               icon: Icons.psychology_alt_outlined,
-              title: 'التدخل السلوكي المناسب لك',
+              title:
+                  'تدخل متعلم: ${BehavioralLearningService.label(_intervention)}',
               color: _accent,
-              child: Text(analysis.behavioralNudge,
-                  style: const TextStyle(
-                      color: Colors.white70, height: 1.7, fontSize: 13)),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      BehavioralLearningService.message(
+                        _intervention,
+                        installment: _installment,
+                        dailyAllowance: analysis.dailyAllowance,
+                        totalBnpl: widget.bnpl + _installment,
+                      ),
+                      style: const TextStyle(
+                          color: Colors.white70, height: 1.7, fontSize: 13),
+                    ),
+                    const SizedBox(height: 7),
+                    const Text(
+                      'يوازن محليًا بين التجربة والنتائج السابقة، دون حفظ هويتك أو مبالغك.',
+                      style: TextStyle(color: Colors.white38, fontSize: 10),
+                    ),
+                  ]),
             ),
             const SizedBox(height: 14),
             _section(
@@ -117,6 +141,8 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                       .toList(),
                 ),
               ),
+            const SizedBox(height: 14),
+            _decisionFeedback(),
           ]),
         ),
       ),
@@ -150,6 +176,53 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                   color: Colors.white70, height: 1.6, fontSize: 13)),
         ]),
       );
+
+  Widget _decisionFeedback() => _section(
+        icon: Icons.how_to_reg_outlined,
+        title: 'بعد تنبيه وقفة، وش قررت؟',
+        color: const Color(0xFF48CAE4),
+        child: _recordedOutcome != null
+            ? const Row(children: [
+                Icon(Icons.check_circle, color: _safe, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'تم تسجيل القرار محليًا بدون حفظ المبلغ أو هويتك.',
+                    style: TextStyle(color: Colors.white60, fontSize: 12),
+                  ),
+                ),
+              ])
+            : Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _outcomeChip('أجّلت', DecisionOutcome.delayed, _warning),
+                  _outcomeChip('خفّضت القسط', DecisionOutcome.reduced, _safe),
+                  _outcomeChip('ألغيت', DecisionOutcome.cancelled, _safe),
+                  _outcomeChip(
+                      'كملت الشراء', DecisionOutcome.continued, _danger),
+                ],
+              ),
+      );
+
+  Widget _outcomeChip(String label, DecisionOutcome outcome, Color color) {
+    return ActionChip(
+      label: Text(label),
+      labelStyle: TextStyle(color: color, fontSize: 12),
+      backgroundColor: color.withOpacity(.10),
+      side: BorderSide(color: color.withOpacity(.28)),
+      onPressed: () async {
+        await DecisionOutcomeService.record(outcome);
+        await BehavioralLearningService.record(
+          _intervention,
+          outcome != DecisionOutcome.continued,
+        );
+        if (!mounted) return;
+        HapticFeedback.mediumImpact();
+        setState(() => _recordedOutcome = outcome);
+      },
+    );
+  }
 
   Widget _installmentSlider(double max) => _section(
         icon: Icons.shopping_cart_checkout_rounded,
@@ -205,7 +278,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                 3,
                 (i) => Expanded(
                       child: Padding(
-                        padding: EdgeInsets.only(left: i < 2 ? 8 : 0),
+                        padding: EdgeInsetsDirectional.only(end: i < 2 ? 8 : 0),
                         child: _metric(
                             'شهر ${i + 1}',
                             '${a.ninetyDayBalances[i].round()}',
@@ -216,6 +289,21 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
           const SizedBox(height: 10),
           Text('المتبقي اليومي المتوقع: ${a.dailyAllowance.round()} ريال',
               style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          const SizedBox(height: 5),
+          Text(
+            a.firstCriticalDay == null
+                ? 'لم ترصد المحاكاة عجزًا خلال 90 يومًا'
+                : 'أول ضغط حرج متوقع: اليوم ${a.firstCriticalDay! + 1}',
+            style: TextStyle(
+              color: a.firstCriticalDay == null ? _safe : _danger,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${a.daysBelowSafetyReserve} يومًا تحت احتياطي الأمان',
+            style: const TextStyle(color: Colors.white38, fontSize: 10),
+          ),
         ]),
       );
 

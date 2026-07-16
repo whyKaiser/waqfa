@@ -18,6 +18,7 @@ class _InputScreenState extends State<InputScreen> {
   final _bnplCtrl = TextEditingController();
   final _concernCtrl = TextEditingController();
   bool _navigating = false; // يمنع فتح شاشتين نتيجة بنقرة مزدوجة سريعة
+  bool _allowCloudAi = false;
 
   @override
   void dispose() {
@@ -43,7 +44,9 @@ class _InputScreenState extends State<InputScreen> {
       _bnplCtrl.text = (data['bnpl'] ?? 0).toInt().toString();
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم استيراد بياناتك — راجعها واضغط حلّل')),
+      const SnackBar(
+          content:
+              Text('تم تحميل بيانات النموذج التجريبي — راجعها واضغط حلّل')),
     );
   }
 
@@ -61,7 +64,9 @@ class _InputScreenState extends State<InputScreen> {
     final current = double.tryParse(ctrl.text) ?? 0;
     setState(() => ctrl.text = (current + amount).toInt().toString());
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('أُضيف ${amount.toInt()} ريال إلى ${isBnpl ? "أقساط BNPL" : "المصاريف المتغيرة"}')),
+      SnackBar(
+          content: Text(
+              'أُضيف ${amount.toInt()} ريال إلى ${isBnpl ? "أقساط BNPL" : "المصاريف المتغيرة"}')),
     );
   }
 
@@ -84,6 +89,7 @@ class _InputScreenState extends State<InputScreen> {
           variable: double.tryParse(_variableCtrl.text) ?? 0,
           bnpl: double.tryParse(_bnplCtrl.text) ?? 0,
           concern: _concernCtrl.text,
+          allowCloudAi: _allowCloudAi,
         ),
       ),
     );
@@ -112,12 +118,13 @@ class _InputScreenState extends State<InputScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _connectAccounts,
                   icon: const Icon(Icons.sync_rounded, size: 18),
-                  label: const Text('اربط حساباتك تلقائياً (مصرفية مفتوحة)'),
+                  label: const Text('جرّب ربط الحسابات (نموذج تجريبي)'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF48CAE4),
                     side: const BorderSide(color: Color(0xFF48CAE4), width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -132,15 +139,18 @@ class _InputScreenState extends State<InputScreen> {
                     foregroundColor: const Color(0xFF6BCB77),
                     side: const BorderSide(color: Color(0xFF6BCB77), width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
               const Row(children: [
                 Expanded(child: Divider(color: Colors.white12)),
-                Padding(padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('أو أدخل يدوياً', style: TextStyle(color: Colors.white24, fontSize: 12))),
+                Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('أو أدخل يدوياً',
+                        style: TextStyle(color: Colors.white24, fontSize: 12))),
                 Expanded(child: Divider(color: Colors.white12)),
               ]),
               const SizedBox(height: 16),
@@ -187,6 +197,28 @@ class _InputScreenState extends State<InputScreen> {
                 hint: 'مثال: خايف ما أكفي آخر الشهر...',
                 icon: Icons.chat_bubble_outline,
                 isNumber: false,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: SwitchListTile.adaptive(
+                  value: _allowCloudAi,
+                  onChanged: (value) => setState(() => _allowCloudAi = value),
+                  activeColor: const Color(0xFF6C63FF),
+                  title: const Text(
+                    'تحليل سحابي اختياري',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                  subtitle: const Text(
+                    'عند تفعيله تُرسل أرقامك وبيانات ملفك التخصيصي إلى Groq لإنشاء نصيحة. عند إيقافه يعمل التحليل المحلي فقط.',
+                    style: TextStyle(
+                        color: Colors.white38, fontSize: 11, height: 1.5),
+                  ),
+                ),
               ),
               const SizedBox(height: 32),
               SizedBox(

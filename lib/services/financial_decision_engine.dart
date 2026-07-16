@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'cash_flow_engine.dart';
+
 class FinancialProfile {
   final double salary;
   final double fixedExpenses;
@@ -61,6 +63,8 @@ class DecisionAnalysis {
   final String verdict;
   final String behavioralNudge;
   final List<double> ninetyDayBalances;
+  final int? firstCriticalDay;
+  final int daysBelowSafetyReserve;
   final List<RiskFactor> factors;
   final List<SafeAlternative> alternatives;
   final List<ShockResult> shocks;
@@ -76,6 +80,8 @@ class DecisionAnalysis {
     required this.verdict,
     required this.behavioralNudge,
     required this.ninetyDayBalances,
+    required this.firstCriticalDay,
+    required this.daysBelowSafetyReserve,
     required this.factors,
     required this.alternatives,
     required this.shocks,
@@ -99,10 +105,12 @@ class FinancialDecisionEngine {
         installment;
     final remaining = salary - total;
     final daily = remaining / 30;
-    final balances = List<double>.generate(
-      3,
-      (index) => remaining * (index + 1),
-    );
+    final projection = _projectNinetyDays(profile, installment);
+    final balances = [
+      projection.dailyClosingBalances[29],
+      projection.dailyClosingBalances[59],
+      projection.dailyClosingBalances[89],
+    ];
     final factors = _factors(profile, installment);
     final shocks = _shocks(remaining, salary);
     final alternatives = _alternatives(profile, installment);
@@ -125,9 +133,61 @@ class FinancialDecisionEngine {
       verdict: _verdict(proposedRisk, remaining, installment),
       behavioralNudge: _nudge(profile, installment, daily, proposedRisk),
       ninetyDayBalances: balances,
+      firstCriticalDay: projection.firstCriticalDay,
+      daysBelowSafetyReserve: projection.daysBelowReserve,
       factors: factors,
       alternatives: alternatives,
       shocks: shocks,
+    );
+  }
+
+  static CashFlowSimulationResult _projectNinetyDays(
+      FinancialProfile profile, double installment) {
+    final events = <CashFlowEvent>[];
+    for (var month = 0; month < 3; month++) {
+      final start = month * 30;
+      events.add(CashFlowEvent(
+        day: start,
+        amount: math.max(profile.salary, 0).toDouble(),
+        kind: CashFlowEventKind.income,
+        label: 'الراتب',
+      ));
+      events.add(CashFlowEvent(
+        day: start + 2,
+        amount: math.max(profile.fixedExpenses, 0).toDouble(),
+        kind: CashFlowEventKind.fixedExpense,
+        label: 'المصاريف الثابتة',
+        mandatory: true,
+      ));
+      events.add(CashFlowEvent(
+        day: start + 7,
+        amount: math.max(profile.currentBnpl, 0).toDouble(),
+        kind: CashFlowEventKind.bnplInstallment,
+        label: 'الأقساط القائمة',
+        mandatory: true,
+      ));
+      if (installment > 0) {
+        events.add(CashFlowEvent(
+          day: start + 10,
+          amount: installment,
+          kind: CashFlowEventKind.proposedInstallment,
+          label: 'القسط المقترح',
+          mandatory: true,
+        ));
+      }
+      for (var day = 0; day < 30; day++) {
+        events.add(CashFlowEvent(
+          day: start + day,
+          amount: math.max(profile.variableExpenses / 30, 0).toDouble(),
+          kind: CashFlowEventKind.variableExpense,
+          label: 'إنفاق يومي متوقع',
+        ));
+      }
+    }
+    return DailyCashFlowEngine.simulate(
+      openingBalance: 0,
+      monthlyIncome: math.max(profile.salary, 0).toDouble(),
+      events: events,
     );
   }
 

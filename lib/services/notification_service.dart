@@ -70,4 +70,3 @@ class NotificationService {
     return tz.TZDateTime(tz.local, now.year, now.month + 1, 1, 9, 0);
   }
 }
- 

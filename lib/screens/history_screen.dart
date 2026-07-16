@@ -236,4 +236,3 @@ class _TrendChart extends StatelessWidget {
     );
   }
 }
- 

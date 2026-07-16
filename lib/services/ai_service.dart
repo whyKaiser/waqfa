@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'secrets.dart';
 import 'profile_service.dart';
@@ -70,11 +69,23 @@ class AiService {
     required double variable,
     required double bnpl,
     String concern = '',
+    bool allowCloud = false,
   }) async {
     final remaining = salary - fixed - variable - bnpl;
     final safeSalary = salary > 0 ? salary : 1;
     final bnplRatio = ((bnpl / safeSalary) * 100).round();
     final totalRatio = (((fixed + variable + bnpl) / safeSalary) * 100).round();
+
+    if (!allowCloud) {
+      return _localFallback(
+        salary: salary,
+        bnpl: bnpl,
+        remaining: remaining,
+        bnplRatio: bnplRatio,
+        totalRatio: totalRatio,
+        concern: concern,
+      );
+    }
 
     final profileCtx = (await ProfileService.load()).toPromptContext();
 
@@ -120,9 +131,6 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
           )
           .timeout(const Duration(seconds: 12));
 
-      debugPrint('Groq status: ${response.statusCode}');
-      debugPrint('Groq body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final content = data['choices'][0]['message']['content'];
@@ -135,7 +143,6 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
             totalRatio: totalRatio,
             concern: concern);
       } else {
-        debugPrint('Groq error: ${response.body}');
         return _localFallback(
             salary: salary,
             bnpl: bnpl,
@@ -144,8 +151,7 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
             totalRatio: totalRatio,
             concern: concern);
       }
-    } catch (e) {
-      debugPrint('Exception: $e');
+    } catch (_) {
       return _localFallback(
           salary: salary,
           bnpl: bnpl,
@@ -191,18 +197,15 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
             // مهلة أطول: رفع صورة أبطأ من طلب نصي
           )
           .timeout(const Duration(seconds: 25));
-      debugPrint('Receipt status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final content =
             data['choices'][0]['message']['content'] as String? ?? '';
         return ReceiptResult.parse(content);
       }
-      debugPrint('Receipt error: ${response.body}');
       return ReceiptResult.error(
           'تعذّر تحليل الفاتورة (${response.statusCode}). حاول بصورة أوضح.');
-    } catch (e) {
-      debugPrint('Receipt exception: $e');
+    } catch (_) {
       return ReceiptResult.error(
           'تعذّر الاتصال. تأكد من الإنترنت وحاول مرة ثانية.');
     }
@@ -243,9 +246,7 @@ ${concern.isNotEmpty ? '- قلق المستخدم: $concern' : ''}$profileCtx
         final content = data['choices'][0]['message']['content'];
         if (content is String && content.trim().isNotEmpty) return content;
       }
-    } catch (e) {
-      debugPrint('explainTerm exception: $e');
-    }
+    } catch (_) {}
     return _termFallback(term);
   }
 
