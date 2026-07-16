@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'secrets.dart';
 import 'profile_service.dart';
 
 /// نتيجة تحليل فاتورة مصوّرة.
@@ -61,7 +60,10 @@ class ReceiptResult {
 }
 
 class AiService {
-  static const String _apiKey = Secrets.groqApiKey;
+  static const String _apiKey = String.fromEnvironment(
+    'GROQ_API_KEY',
+    defaultValue: '',
+  );
 
   static Future<String> analyzeFinances({
     required double salary,
