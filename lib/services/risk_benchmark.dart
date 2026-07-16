@@ -1,6 +1,6 @@
 import 'cash_flow_engine.dart';
+import 'financial_decision_engine.dart';
 import 'synthetic_financial_scenarios.dart';
-import 'temporal_risk_engine.dart';
 
 class BenchmarkMetrics {
   final int seed;
@@ -14,7 +14,7 @@ class BenchmarkMetrics {
   final int falseNegatives;
   final int trueNegatives;
   final double criticalRecall;
-  final double falseAlertRate;
+  final double falsePositiveRate;
   final double medianLeadTimeDays;
   final double meanRiskReductionPoints;
   final double criticalOutcomeAvoidanceRate;
@@ -33,7 +33,7 @@ class BenchmarkMetrics {
     required this.falseNegatives,
     required this.trueNegatives,
     required this.criticalRecall,
-    required this.falseAlertRate,
+    required this.falsePositiveRate,
     required this.medianLeadTimeDays,
     required this.meanRiskReductionPoints,
     required this.criticalOutcomeAvoidanceRate,
@@ -44,7 +44,7 @@ class BenchmarkMetrics {
   Map<String, Object> toJson() => {
         'seed': seed,
         'alert_threshold': alertThreshold,
-        'scope': 'synthetic_90_day_scenarios',
+        'scope': 'synthetic_90_day_scenarios_product_risk_engine',
         'total_scenarios': totalScenarios,
         'critical_scenarios': criticalScenarios,
         'non_critical_scenarios': nonCriticalScenarios,
@@ -56,7 +56,7 @@ class BenchmarkMetrics {
           'true_negative': trueNegatives,
         },
         'critical_recall': criticalRecall,
-        'false_alert_rate': falseAlertRate,
+        'false_positive_rate': falsePositiveRate,
         'median_lead_time_days': medianLeadTimeDays,
         'mean_risk_reduction_points_if_installment_halved':
             meanRiskReductionPoints,
@@ -69,21 +69,25 @@ class BenchmarkMetrics {
 
 /// Backtest قابل لإعادة التشغيل على حالات اصطناعية فقط.
 ///
-/// الحقيقة المرجعية تأتي من محرك التدفق اليومي (بما في ذلك الصدمات المحققة)،
-/// بينما مؤشر المخاطر لا يرى الصدمات المستقبلية. هذا يمنع استخدام النتيجة ذاتها
-/// كمدخل للتنبؤ، لكنه لا يحول الاختبار إلى دليل أداء على عملاء حقيقيين.
+/// الحقيقة المرجعية تأتي من محرك تدفق يومي مستقل (بما في ذلك الصدمات المحققة)،
+/// بينما القرار يُحسب بنفس [FinancialDecisionEngine] المستخدم في شاشات وقفة
+/// ومن بيانات لحظة القرار فقط. هذا يمنع تسريب النتيجة المستقبلية إلى الدرجة،
+/// لكنه لا يحول الاختبار إلى دليل أداء على عملاء حقيقيين.
 class RiskBenchmark {
   static const String disclosure =
-      'النتائج تخص 100 سيناريو اصطناعي مولدًا آليًا ولا تمثل دقة على عملاء حقيقيين أو خفضًا مثبتًا للتعثر.';
+      'النتائج تخص 100 سيناريو اصطناعي وتختبر نفس محرك الدرجة المستخدم في وقفة؛ لا تمثل دقة على عملاء حقيقيين أو خفضًا مثبتًا للتعثر.';
 
   static BenchmarkMetrics run({
     List<SyntheticFinancialScenario>? scenarios,
     int seed = SyntheticScenarioGenerator.defaultSeed,
-    int alertThreshold = TemporalRiskEngine.defaultAlertThreshold,
+    int alertThreshold = FinancialDecisionEngine.warningThreshold,
   }) {
     final cohort = scenarios ?? SyntheticScenarioGenerator.generate(seed: seed);
     if (cohort.isEmpty)
       throw ArgumentError('Benchmark cohort cannot be empty.');
+    if (alertThreshold < 0 || alertThreshold > 100) {
+      throw RangeError.range(alertThreshold, 0, 100, 'alertThreshold');
+    }
 
     var truePositives = 0;
     var falsePositives = 0;
@@ -105,17 +109,22 @@ class RiskBenchmark {
         monthlyIncome: scenario.monthlyIncome,
         events: scenario.eventsFor(proposedMultiplier: .5),
       );
-      final assessment = TemporalRiskEngine.assess(
-        scenario,
-        alertThreshold: alertThreshold,
+      final profile = FinancialProfile(
+        salary: scenario.monthlyIncome,
+        fixedExpenses: scenario.fixedMonthlyExpenses,
+        variableExpenses: scenario.variableMonthlyExpenses,
+        currentBnpl: scenario.currentBnplMonthly,
       );
-      final reducedAssessment = TemporalRiskEngine.assess(
-        scenario,
-        proposedMultiplier: .5,
-        alertThreshold: alertThreshold,
+      final assessment = FinancialDecisionEngine.analyze(
+        profile,
+        proposedInstallment: scenario.proposedInstallment,
+      );
+      final reducedAssessment = FinancialDecisionEngine.analyze(
+        profile,
+        proposedInstallment: scenario.proposedInstallment * .5,
       );
       final critical = outcome.hasCriticalStress;
-      final alert = assessment.shouldAlert;
+      final alert = assessment.proposedRisk >= alertThreshold;
 
       final bucket = breakdown.putIfAbsent(
         scenario.archetype.name,
@@ -146,10 +155,10 @@ class RiskBenchmark {
 
       if (alert) {
         riskReductions.add(
-          (assessment.score - reducedAssessment.score).toDouble(),
+          (assessment.proposedRisk - reducedAssessment.proposedRisk).toDouble(),
         );
       }
-      if (critical && !reducedOutcome.hasCriticalStress) {
+      if (critical && alert && !reducedOutcome.hasCriticalStress) {
         avoidedCriticalOutcomes++;
       }
     }
@@ -168,12 +177,12 @@ class RiskBenchmark {
       falseNegatives: falseNegatives,
       trueNegatives: trueNegatives,
       criticalRecall: criticalCount == 0 ? 0 : truePositives / criticalCount,
-      falseAlertRate:
+      falsePositiveRate:
           nonCriticalCount == 0 ? 0 : falsePositives / nonCriticalCount,
       medianLeadTimeDays: _median(leadTimes),
       meanRiskReductionPoints: _mean(riskReductions),
       criticalOutcomeAvoidanceRate:
-          criticalCount == 0 ? 0 : avoidedCriticalOutcomes / criticalCount,
+          truePositives == 0 ? 0 : avoidedCriticalOutcomes / truePositives,
       archetypeBreakdown: Map<String, Map<String, int>>.unmodifiable(
         breakdown.map(
           (key, value) => MapEntry(key, Map<String, int>.unmodifiable(value)),

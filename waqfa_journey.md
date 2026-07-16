@@ -56,13 +56,13 @@
 ---
 
 ## التقنيات المستخدمة
-- **Flutter** — تطبيق Android
-- **Groq API** — الذكاء الاصطناعي (مجاني)
-  - Model: `llama-3.3-70b-versatile`
+- **Flutter** — تطبيق Android وiOS والويب
+- **Groq API** — طبقة الذكاء الاصطناعي التوليدي
+  - Model: `qwen/qwen3.6-27b`
   - Endpoint: `https://api.groq.com/openai/v1/chat/completions`
 - **shared_preferences** — حفظ البيانات محلياً
 - **flutter_local_notifications** — التنبيهات
-- **google_fonts** — خط Cairo العربي
+- **Cairo** — خط عربي مضمن داخل التطبيق
 
 ---
 
@@ -72,19 +72,19 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.1.0
-  google_fonts: ^6.1.0
   shared_preferences: ^2.2.2
   flutter_local_notifications: ^17.0.0
   timezone: ^0.9.4
+  image_picker: ^1.0.7
 ```
 
 ---
 
 ## منطق الإنذار المبكر
 ```
-نسبة BNPL > 30% أو نسبة المصاريف > 90% → خطر 🔴
-نسبة BNPL > 20% أو نسبة المصاريف > 75% → تحذير 🟡
-أقل من ذلك → جيد 🟢
+FinancialDecisionEngine يجمع القدرة على تحمّل القسط، ضغط BNPL،
+هامش السيولة، واختبارات الصدمات في مؤشر مفسّر من 100:
+70 فأعلى → خطر 🔴 | 45–69 → يحتاج وقفة 🟡 | أقل من 45 → جيد 🟢
 ```
 
 ---
@@ -118,7 +118,7 @@ dependencies:
 ج: البنوك ترى مصاريفك داخل تطبيقها فقط. وقفة يجمع الصورة كاملة شاملاً تمارا وتابي.
 
 **س: كيف تحمي بيانات المستخدم؟**
-ج: كل البيانات تُحفظ على الجوال فقط، ما ترسل لأي خادم خارجي.
+ج: محرك القرار الأساسي يعمل محليًا. التحليل السحابي اختياري، وصورة الفاتورة لا تُرسل إلى Groq إلا بعد موافقة واضحة؛ النسخة الإنتاجية ستستخدم backend proxy وتخزينًا مشفرًا.
 
 **س: كيف تكسب فلوس؟**
 ج: اشتراك شهري، أو شراكة مع البنوك والجهات المالية، أو B2B للشركات.
@@ -134,10 +134,10 @@ dependencies:
 ---
 
 ## ملاحظات تقنية مهمة
-- مفتاح Groq API يُحفظ في `secrets.dart` — لا تشاركه
+- مفتاح Groq يمرر في نسخة العرض عبر `GROQ_API_KEY --dart-define` ولا يُرفع إلى Git؛ هذا Demo فقط، والإنتاج يحتاج backend proxy
 - لو انتهى الرصيد، أنشئ مفتاح جديد من `console.groq.com`
-- لتشغيل المشروع: `flutter pub get` ثم ▶️
-- ملف الاختبار `test/widget_test.dart` يحتوي فقط على `void main() {}`
+- لتشغيل المشروع محليًا: `flutter pub get` ثم `flutter run --dart-define=GROQ_API_KEY="<KEY>"`
+- شغّل `flutter analyze` و`flutter test` و`dart run tool/risk_benchmark.dart` قبل أي إصدار
 
 
 ---

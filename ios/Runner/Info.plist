@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>يستخدم وقفة الكاميرا لتصوير الفاتورة وتحليل مبلغها بعد موافقتك.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>يستخدم وقفة مكتبة الصور لاختيار فاتورة وتحليلها بعد موافقتك.</string>
 </dict>
 </plist>

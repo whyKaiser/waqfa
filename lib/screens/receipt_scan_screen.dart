@@ -16,11 +16,18 @@ class ReceiptScanScreen extends StatefulWidget {
 class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
   static const _accent = Color(0xFF6C63FF);
   final _picker = ImagePicker();
+  final _monthlyInstallmentCtrl = TextEditingController();
 
   Uint8List? _image;
   bool _loading = false;
   ReceiptResult? _result;
   bool _cloudConsentGranted = false;
+
+  @override
+  void dispose() {
+    _monthlyInstallmentCtrl.dispose();
+    super.dispose();
+  }
 
   Future<bool> _confirmCloudUpload() async {
     if (_cloudConsentGranted) return true;
@@ -52,7 +59,11 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
     if (!await _confirmCloudUpload() || !mounted) return;
     try {
       final file = await _picker.pickImage(
-          source: source, maxWidth: 1280, imageQuality: 70);
+        source: source,
+        maxWidth: 1280,
+        maxHeight: 1800,
+        imageQuality: 70,
+      );
       if (file == null) return;
       final bytes = await file.readAsBytes();
       if (!mounted) return;
@@ -61,14 +72,34 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
         _result = null;
         _loading = true;
       });
+      _monthlyInstallmentCtrl.clear();
       final res = await AiService.analyzeReceipt(base64Encode(bytes));
       if (!mounted) return;
+      if (res.isBnpl && res.monthlyInstallment > 0) {
+        _monthlyInstallmentCtrl.text = res.monthlyInstallment.toString();
+      }
       HapticFeedback.lightImpact();
       setState(() {
         _result = res;
         _loading = false;
       });
-    } catch (e) {
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      final message = switch (e.code) {
+        'camera_access_denied' =>
+          'صلاحية الكاميرا مرفوضة. فعّلها لوقفة من إعدادات الآيباد.',
+        'camera_access_restricted' =>
+          'الكاميرا مقيّدة على هذا الجهاز ولا يستطيع وقفة استخدامها.',
+        'photo_access_denied' =>
+          'صلاحية الصور مرفوضة. فعّلها لوقفة من إعدادات الآيباد.',
+        'photo_access_restricted' => 'الوصول للصور مقيّد على هذا الجهاز.',
+        _ => 'تعذّر فتح الصورة. حاول مرة ثانية.',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -80,7 +111,25 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
   void _useAmount() {
     final r = _result;
     if (r == null || !r.ok || r.total <= 0) return;
-    Navigator.pop(context, {'amount': r.total, 'isBnpl': r.isBnpl});
+    var amount = r.total;
+    if (r.isBnpl) {
+      amount = double.tryParse(_monthlyInstallmentCtrl.text.trim()) ?? 0;
+      if (amount <= 0 || !amount.isFinite) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('أدخل قيمة القسط الشهري أولاً')),
+        );
+        return;
+      }
+      if (amount > r.total) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('القسط الشهري لا يمكن أن يتجاوز إجمالي الشراء'),
+          ),
+        );
+        return;
+      }
+    }
+    Navigator.pop(context, {'amount': amount, 'isBnpl': r.isBnpl});
   }
 
   @override
@@ -214,11 +263,15 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
                       fontWeight: FontWeight.w600)),
             ),
           const Spacer(),
-          Text('${r.total.toInt()} ريال',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800)),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('${r.total.toInt()} ريال',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800)),
+            const Text('إجمالي الشراء',
+                style: TextStyle(color: Colors.white38, fontSize: 10)),
+          ]),
         ]),
         const SizedBox(height: 14),
         if (r.merchant.isNotEmpty)
@@ -230,6 +283,51 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
           Text(r.note,
               style: const TextStyle(
                   color: Colors.white60, fontSize: 13, height: 1.7)),
+        if (r.isBnpl) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _accent.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _accent.withOpacity(0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('كم القسط الشهري؟',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                const Text(
+                  'وقفة لا يعتبر إجمالي الشراء قسطًا. راجع خطة تمارا أو تابي وأدخل الدفعة الشهرية فقط.',
+                  style: TextStyle(
+                      color: Colors.white54, fontSize: 11, height: 1.5),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _monthlyInstallmentCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [_MoneyInputFormatter()],
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'مثال: 250',
+                    suffixText: 'ريال/شهر',
+                    filled: true,
+                    fillColor: Colors.black.withOpacity(0.15),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         if (r.total > 0) ...[
           const SizedBox(height: 16),
           SizedBox(
@@ -237,7 +335,8 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
             child: ElevatedButton.icon(
               onPressed: _useAmount,
               icon: const Icon(Icons.add_rounded, size: 20),
-              label: Text(r.isBnpl ? 'أضِف لأقساط BNPL' : 'أضِف لمصاريفي'),
+              label: Text(
+                  r.isBnpl ? 'أضِف القسط الشهري إلى BNPL' : 'أضِف لمصاريفي'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6BCB77),
                 foregroundColor: Colors.white,
@@ -265,5 +364,17 @@ class _ReceiptScanScreenState extends State<ReceiptScanScreen> {
                 style: const TextStyle(color: Colors.white70, fontSize: 13))),
       ]),
     );
+  }
+}
+
+class _MoneyInputFormatter extends TextInputFormatter {
+  final RegExp _pattern = RegExp(r'^\d{0,8}(?:\.\d{0,2})?$');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return _pattern.hasMatch(newValue.text) ? newValue : oldValue;
   }
 }

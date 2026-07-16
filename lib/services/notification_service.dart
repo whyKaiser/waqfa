@@ -11,20 +11,33 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation('Asia/Riyadh'));
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings();
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     await _plugin.initialize(
       const InitializationSettings(android: android, iOS: ios),
     );
-    await _plugin
+  }
+
+  static Future<bool> requestPermissions() async {
+    final android = await _plugin
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
+    final ios = await _plugin
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+    return (android ?? true) && (ios ?? true);
   }
 
   static Future<void> sendWarning({
     required String title,
     required String body,
   }) async {
+    if (!await requestPermissions()) return;
     await _plugin.show(
       0,
       title,
@@ -44,6 +57,7 @@ class NotificationService {
   }
 
   static Future<void> scheduleMonthlyReminder() async {
+    if (!await requestPermissions()) return;
     await _plugin.zonedSchedule(
       1,
       '⏰ حان وقت مراجعة وضعك المالي',
@@ -60,7 +74,7 @@ class NotificationService {
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
-      UILocalNotificationDateInterpretation.absoluteTime,
+          UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
     );
   }

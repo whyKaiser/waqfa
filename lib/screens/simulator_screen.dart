@@ -27,6 +27,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   late final FinancialProfile _profile;
   late double _installment;
   DecisionOutcome? _recordedOutcome;
+  bool _recordingOutcome = false;
   InterventionStrategy _intervention = InterventionStrategy.coolingOff;
 
   static const _danger = Color(0xFFFF6B6B);
@@ -54,11 +55,12 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         proposedInstallment: _installment,
       );
 
-  Color _riskColor(int score) => score >= 70
-      ? _danger
-      : score >= 45
-          ? _warning
-          : _safe;
+  Color _riskColor(int score) =>
+      score >= FinancialDecisionEngine.dangerThreshold
+          ? _danger
+          : score >= FinancialDecisionEngine.warningThreshold
+              ? _warning
+              : _safe;
 
   @override
   Widget build(BuildContext context) {
@@ -211,16 +213,25 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       labelStyle: TextStyle(color: color, fontSize: 12),
       backgroundColor: color.withOpacity(.10),
       side: BorderSide(color: color.withOpacity(.28)),
-      onPressed: () async {
-        await DecisionOutcomeService.record(outcome);
-        await BehavioralLearningService.record(
-          _intervention,
-          outcome != DecisionOutcome.continued,
-        );
-        if (!mounted) return;
-        HapticFeedback.mediumImpact();
-        setState(() => _recordedOutcome = outcome);
-      },
+      onPressed: _recordingOutcome
+          ? null
+          : () async {
+              setState(() => _recordingOutcome = true);
+              try {
+                await DecisionOutcomeService.record(outcome);
+                await BehavioralLearningService.record(
+                  _intervention,
+                  outcome != DecisionOutcome.continued,
+                );
+                if (!mounted) return;
+                HapticFeedback.mediumImpact();
+                setState(() => _recordedOutcome = outcome);
+              } finally {
+                if (mounted && _recordedOutcome == null) {
+                  setState(() => _recordingOutcome = false);
+                }
+              }
+            },
     );
   }
 

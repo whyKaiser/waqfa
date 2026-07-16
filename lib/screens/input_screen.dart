@@ -72,8 +72,20 @@ class _InputScreenState extends State<InputScreen> {
 
   Future<void> _analyze() async {
     if (_navigating) return;
-    final salary = double.tryParse(_salaryCtrl.text) ?? 0;
-    if (salary == 0) {
+    final values = [
+      _parseAmount(_salaryCtrl),
+      _parseAmount(_fixedCtrl),
+      _parseAmount(_variableCtrl),
+      _parseAmount(_bnplCtrl),
+    ];
+    if (values.any((value) => value == null || !value.isFinite)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تحقق من المبالغ المدخلة')),
+      );
+      return;
+    }
+    final salary = values[0]!;
+    if (salary <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('أدخل راتبك أولاً')),
       );
@@ -85,15 +97,21 @@ class _InputScreenState extends State<InputScreen> {
       MaterialPageRoute(
         builder: (_) => ResultScreen(
           salary: salary,
-          fixed: double.tryParse(_fixedCtrl.text) ?? 0,
-          variable: double.tryParse(_variableCtrl.text) ?? 0,
-          bnpl: double.tryParse(_bnplCtrl.text) ?? 0,
+          fixed: values[1]!,
+          variable: values[2]!,
+          bnpl: values[3]!,
           concern: _concernCtrl.text,
           allowCloudAi: _allowCloudAi,
         ),
       ),
     );
     _navigating = false;
+  }
+
+  double? _parseAmount(TextEditingController controller) {
+    final text = controller.text.trim();
+    if (text.isEmpty) return 0;
+    return double.tryParse(text);
   }
 
   @override
@@ -297,9 +315,7 @@ class _InputField extends StatelessWidget {
             keyboardType: isNumber
                 ? const TextInputType.numberWithOptions(decimal: true)
                 : TextInputType.text,
-            inputFormatters: isNumber
-                ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
-                : null,
+            inputFormatters: isNumber ? [_MoneyInputFormatter()] : null,
             style: const TextStyle(fontSize: 18, color: Colors.white),
             decoration: InputDecoration(
               hintText: hint,
@@ -318,5 +334,17 @@ class _InputField extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _MoneyInputFormatter extends TextInputFormatter {
+  final RegExp _pattern = RegExp(r'^\d{0,9}(?:\.\d{0,2})?$');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return _pattern.hasMatch(newValue.text) ? newValue : oldValue;
   }
 }

@@ -9,16 +9,20 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('مختبر التحقق يوضح أن البيانات اصطناعية', (tester) async {
+  testWidgets('صفحة الاختبار توضح الهدف والحدود', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: EvidenceScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('مختبر التحقق'), findsOneWidget);
-    expect(find.textContaining('100 سيناريو مالي اصطناعي'), findsOneWidget);
+    expect(find.text('كيف اختبرنا وقفة؟'), findsOneWidget);
+    expect(find.textContaining('100 حالة مالية اصطناعية'), findsOneWidget);
+    expect(find.textContaining('نفس محرك المخاطر'), findsOneWidget);
+    expect(find.textContaining('ماذا وجدنا؟'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -1200));
     await tester.pumpAndSettle();
     expect(
-        find.textContaining('لا تمثل دقة على عملاء حقيقيين'), findsOneWidget);
+      find.textContaining('لا تمثل دقة على عملاء حقيقيين'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('وقفة قبل تدفع تعرض المقارنة والتدخل', (tester) async {

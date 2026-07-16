@@ -171,12 +171,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: Row(
                         children: [
                           _IconBtn(
-                            icon: Icons.science_outlined,
-                            label: 'مختبر التحقق',
-                            onTap: () => _navigateTo(const EvidenceScreen()),
-                          ),
-                          const SizedBox(width: 8),
-                          _IconBtn(
                             icon: Icons.school_outlined,
                             label: 'التعلّم المالي',
                             onTap: () => _navigateTo(const LearnScreen()),
@@ -192,6 +186,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             icon: Icons.history_rounded,
                             label: 'السجل',
                             onTap: () => _navigateTo(const HistoryScreen()),
+                          ),
+                          const SizedBox(width: 8),
+                          _IconBtn(
+                            icon: Icons.verified_outlined,
+                            label: 'عن الاختبار',
+                            onTap: () => _navigateTo(const EvidenceScreen()),
                           ),
                         ],
                       ),

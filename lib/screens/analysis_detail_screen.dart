@@ -164,7 +164,7 @@ class AnalysisDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // تحليل الذكاء الاصطناعي
+              // التحليل المحفوظ قد يكون سحابيًا أو fallback محليًا.
               if (record.aiAnalysis.isNotEmpty)
                 Container(
                   width: double.infinity,
@@ -181,7 +181,7 @@ class AnalysisDetailScreen extends StatelessWidget {
                         Icon(Icons.psychology_outlined,
                             color: Color(0xFF6C63FF), size: 18),
                         SizedBox(width: 8),
-                        Text('تحليل الذكاء الاصطناعي',
+                        Text('التحليل المالي المحفوظ',
                             style:
                                 TextStyle(fontSize: 13, color: Colors.white38)),
                       ]),

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waqfa/services/cash_flow_engine.dart';
+import 'package:waqfa/services/financial_decision_engine.dart';
 import 'package:waqfa/services/risk_benchmark.dart';
 import 'package:waqfa/services/synthetic_financial_scenarios.dart';
-import 'package:waqfa/services/temporal_risk_engine.dart';
 
 void main() {
   group('DailyCashFlowEngine', () {
@@ -82,27 +82,48 @@ void main() {
     });
   });
 
-  group('TemporalRiskEngine and benchmark', () {
-    test('كل عامل تفسير يساهم فعليًا في الدرجة', () {
-      final scenario = SyntheticScenarioGenerator.generate().first;
-      final assessment = TemporalRiskEngine.assess(scenario);
-      final explainedScore = assessment.contributions
-          .fold<double>(0, (sum, item) => sum + item.points)
-          .round();
+  group('FinancialDecisionEngine and benchmark', () {
+    test('المختبر يستخدم نفس تنبيهات محرك المنتج', () {
+      final scenarios = SyntheticScenarioGenerator.generate();
+      final expectedAlerts = scenarios.where((scenario) {
+        final analysis = FinancialDecisionEngine.analyze(
+          FinancialProfile(
+            salary: scenario.monthlyIncome,
+            fixedExpenses: scenario.fixedMonthlyExpenses,
+            variableExpenses: scenario.variableMonthlyExpenses,
+            currentBnpl: scenario.currentBnplMonthly,
+          ),
+          proposedInstallment: scenario.proposedInstallment,
+        );
+        return analysis.proposedRisk >=
+            FinancialDecisionEngine.warningThreshold;
+      }).length;
 
-      expect(assessment.score, explainedScore);
-      expect(assessment.disclosure, contains('ليس احتمال تعثر'));
+      final metrics = RiskBenchmark.run(scenarios: scenarios);
+
+      expect(metrics.alertThreshold, FinancialDecisionEngine.warningThreshold);
+      expect(metrics.alerts, expectedAlerts);
     });
 
     test('خفض القسط لا يرفع مؤشر المخاطر', () {
       final scenarios = SyntheticScenarioGenerator.generate();
       for (final scenario in scenarios) {
-        final full = TemporalRiskEngine.assess(scenario);
-        final half = TemporalRiskEngine.assess(
-          scenario,
-          proposedMultiplier: .5,
+        final profile = FinancialProfile(
+          salary: scenario.monthlyIncome,
+          fixedExpenses: scenario.fixedMonthlyExpenses,
+          variableExpenses: scenario.variableMonthlyExpenses,
+          currentBnpl: scenario.currentBnplMonthly,
         );
-        expect(half.score, lessThanOrEqualTo(full.score), reason: scenario.id);
+        final full = FinancialDecisionEngine.analyze(
+          profile,
+          proposedInstallment: scenario.proposedInstallment,
+        );
+        final half = FinancialDecisionEngine.analyze(
+          profile,
+          proposedInstallment: scenario.proposedInstallment * .5,
+        );
+        expect(half.proposedRisk, lessThanOrEqualTo(full.proposedRisk),
+            reason: scenario.id);
       }
     });
 
@@ -120,7 +141,7 @@ void main() {
         metrics.totalScenarios,
       );
       expect(metrics.criticalRecall, inInclusiveRange(0, 1));
-      expect(metrics.falseAlertRate, inInclusiveRange(0, 1));
+      expect(metrics.falsePositiveRate, inInclusiveRange(0, 1));
       expect(metrics.medianLeadTimeDays, greaterThanOrEqualTo(0));
       expect(metrics.meanRiskReductionPoints, greaterThanOrEqualTo(0));
       expect(metrics.criticalOutcomeAvoidanceRate, inInclusiveRange(0, 1));

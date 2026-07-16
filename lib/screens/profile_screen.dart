@@ -21,7 +21,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   static const _ages = ['أقل من 25', '25 - 34', '35 - 44', '45+'];
   static const _incomes = ['راتب ثابت', 'دخل حر', 'طالب', 'متقاعد'];
-  static const _allGoals = ['ادخار', 'سداد ديون', 'شراء سيارة', 'الزواج', 'السفر', 'الاستثمار', 'تملّك سكن'];
+  static const _allGoals = [
+    'ادخار',
+    'سداد ديون',
+    'شراء سيارة',
+    'الزواج',
+    'السفر',
+    'الاستثمار',
+    'تملّك سكن'
+  ];
   static const _risks = ['متحفّظ', 'متوازن', 'مغامر'];
 
   @override
@@ -32,6 +40,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _load() async {
     final p = await ProfileService.load();
+    if (!mounted) return;
     setState(() {
       _age = p.ageRange;
       _income = p.incomeType;
@@ -51,7 +60,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     HapticFeedback.mediumImpact();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حفظ ملفك — التحليلات الجاية بتتخصّص لك')),
+      const SnackBar(
+          content: Text('تم حفظ ملفك — التحليلات الجاية بتتخصّص لك')),
     );
     Navigator.pop(context);
   }
@@ -76,13 +86,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     const Text(
                       'كل ما عرّفنا عنك أكثر، صارت توصيات وقفة أدق وأخصّ لك.',
-                      style: TextStyle(fontSize: 13, color: Colors.white54, height: 1.6),
+                      style: TextStyle(
+                          fontSize: 13, color: Colors.white54, height: 1.6),
                     ),
                     const SizedBox(height: 24),
-                    _section('فئتك العمرية', _ages, _age, (v) => setState(() => _age = v)),
-                    _section('نوع دخلك', _incomes, _income, (v) => setState(() => _income = v)),
+                    _section('فئتك العمرية', _ages, _age,
+                        (v) => setState(() => _age = v)),
+                    _section('نوع دخلك', _incomes, _income,
+                        (v) => setState(() => _income = v)),
                     _multiSection('أهدافك المالية', _allGoals),
-                    _section('ميولك للمخاطرة', _risks, _risk, (v) => setState(() => _risk = v)),
+                    _section('ميولك للمخاطرة', _risks, _risk,
+                        (v) => setState(() => _risk = v)),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -92,9 +106,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           backgroundColor: _accent,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                         ),
-                        child: const Text('حفظ الملف', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        child: const Text('حفظ الملف',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ],
@@ -104,18 +121,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _section(String title, List<String> options, String selected, ValueChanged<String> onPick) {
+  Widget _section(String title, List<String> options, String selected,
+      ValueChanged<String> onPick) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w600)),
+        Text(title,
+            style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+                fontWeight: FontWeight.w600)),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: options.map((o) {
             final on = selected == o;
-            return _chip(o, on, () { HapticFeedback.selectionClick(); onPick(o); });
+            return _chip(o, on, () {
+              HapticFeedback.selectionClick();
+              onPick(o);
+            });
           }).toList(),
         ),
         const SizedBox(height: 22),
@@ -127,7 +152,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w600)),
+        Text(title,
+            style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+                fontWeight: FontWeight.w600)),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -154,7 +183,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: on ? _accent.withOpacity(0.2) : Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: on ? _accent : Colors.white.withOpacity(0.1)),
+          border:
+              Border.all(color: on ? _accent : Colors.white.withOpacity(0.1)),
         ),
         child: Text(
           label,

@@ -91,6 +91,10 @@ class DecisionAnalysis {
 /// محرك مالي حتمي وقابل للتفسير. الذكاء التوليدي يمكنه صياغة التدخل،
 /// بينما تبقى الأرقام هنا ثابتة وقابلة للاختبار والتدقيق.
 class FinancialDecisionEngine {
+  /// حدود موحّدة لكل شاشة وقياس داخل التطبيق.
+  static const int warningThreshold = 45;
+  static const int dangerThreshold = 70;
+
   static DecisionAnalysis analyze(
     FinancialProfile profile, {
     required double proposedInstallment,
@@ -114,9 +118,9 @@ class FinancialDecisionEngine {
     final factors = _factors(profile, installment);
     final shocks = _shocks(remaining, salary);
     final alternatives = _alternatives(profile, installment);
-    final level = proposedRisk >= 70
+    final level = proposedRisk >= dangerThreshold
         ? 'خطر مرتفع'
-        : proposedRisk >= 45
+        : proposedRisk >= warningThreshold
             ? 'يحتاج وقفة'
             : 'قرار آمن';
 
@@ -289,10 +293,10 @@ class FinancialDecisionEngine {
   static String _verdict(int risk, double remaining, double installment) {
     if (installment <= 0)
       return 'أدخل القسط الذي تفكر فيه لتختبر القرار قبل الالتزام.';
-    if (risk >= 70) {
+    if (risk >= dangerThreshold) {
       return 'توقّف الآن: القرار يضغط تدفقك النقدي ويترك لك ${remaining.round()} ريال فقط هذا الشهر.';
     }
-    if (risk >= 45) {
+    if (risk >= warningThreshold) {
       return 'القرار ممكن، لكنه يقلّل هامش الأمان. جرّب أحد البدائل قبل الالتزام.';
     }
     return 'القرار داخل النطاق الآمن حاليًا، مع ضرورة إبقاء احتياطي للطوارئ.';
@@ -301,7 +305,7 @@ class FinancialDecisionEngine {
   static String _nudge(
       FinancialProfile p, double installment, double daily, int risk) {
     if (installment <= 0) return 'وقفة صغيرة الآن تحمي خياراتك القادمة.';
-    if (risk >= 70) {
+    if (risk >= dangerThreshold) {
       return 'القسط يبدو ${installment.round()} ريال فقط، لكنه يترك لك ${math.max(daily, 0).round()} ريال يوميًا حتى الراتب. فعّل مهلة 24 ساعة.';
     }
     if (p.currentBnpl > installment && p.currentBnpl > 0) {

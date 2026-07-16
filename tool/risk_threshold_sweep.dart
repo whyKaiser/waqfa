@@ -6,7 +6,7 @@ void main() {
     final metrics = RiskBenchmark.run(alertThreshold: threshold);
     print('$threshold\t'
         '${(metrics.criticalRecall * 100).toStringAsFixed(1)}\t'
-        '${(metrics.falseAlertRate * 100).toStringAsFixed(1)}\t'
+        '${(metrics.falsePositiveRate * 100).toStringAsFixed(1)}\t'
         '${metrics.alerts}\t'
         '${metrics.medianLeadTimeDays.toStringAsFixed(1)}\t'
         '${metrics.meanRiskReductionPoints.toStringAsFixed(1)}');

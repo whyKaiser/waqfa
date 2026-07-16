@@ -33,6 +33,7 @@ class _ResultScreenState extends State<ResultScreen>
     with SingleTickerProviderStateMixin {
   String? _aiAnalysis;
   bool _loading = true;
+  bool _analysisUsedCloud = false;
   TrendResult? _trend;
   late AnimationController _animController;
   late Animation<double> _animation;
@@ -52,8 +53,13 @@ class _ResultScreenState extends State<ResultScreen>
         CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic);
     _calculate();
     _animController.forward();
-    _fetchTrend(); // يقرأ السجل السابق قبل ما نحفظ التحليل الحالي
-    _fetchAnalysis();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    // اقرأ السجل السابق بالكامل قبل حفظ التحليل الحالي حتى يبقى الاتجاه صحيحًا.
+    await _fetchTrend();
+    await _fetchAnalysis();
   }
 
   Future<void> _fetchTrend() async {
@@ -90,9 +96,9 @@ class _ResultScreenState extends State<ResultScreen>
       ),
       proposedInstallment: 0,
     );
-    if (_compositeScore >= 70) {
+    if (_compositeScore >= FinancialDecisionEngine.dangerThreshold) {
       _riskLevel = _RiskLevel.danger;
-    } else if (_compositeScore >= 45) {
+    } else if (_compositeScore >= FinancialDecisionEngine.warningThreshold) {
       _riskLevel = _RiskLevel.warning;
     } else {
       _riskLevel = _RiskLevel.safe;
@@ -104,7 +110,8 @@ class _ResultScreenState extends State<ResultScreen>
       if (_riskLevel == _RiskLevel.danger) {
         await NotificationService.sendWarning(
           title: "⚠️ تحذير — وضعك المالي في خطر",
-          body: "أقساط BNPL تجاوزت الحد الآمن. افتح وقفة لمعرفة خطوتك الآن.",
+          body:
+              "مؤشر الضغط المالي مرتفع. افتح وقفة لمعرفة السبب وخطوتك الآمنة الآن.",
         );
       } else if (_riskLevel == _RiskLevel.warning) {
         await NotificationService.sendWarning(
@@ -142,11 +149,12 @@ class _ResultScreenState extends State<ResultScreen>
     );
     if (mounted) {
       setState(() {
-        _aiAnalysis = result;
+        _aiAnalysis = result.text;
+        _analysisUsedCloud = result.usedCloud;
         _loading = false;
       });
       try {
-        await _saveRecord(aiText: result);
+        await _saveRecord(aiText: result.text);
       } catch (_) {
         // Keep the result visible even if local persistence fails.
       }
@@ -167,9 +175,9 @@ class _ResultScreenState extends State<ResultScreen>
     b.writeln('نسبة أقساط BNPL: $_bnplRatio%');
     b.writeln('المتبقي: ${_remaining > 0 ? _remaining.toInt() : 0} ريال');
     b.writeln('');
-    b.writeln(widget.allowCloudAi
+    b.writeln(_analysisUsedCloud
         ? '🔎 تحليل الذكاء الاصطناعي السحابي:'
-        : '🔎 التحليل المحلي:');
+        : '🔎 التحليل المحلي الآمن:');
     b.writeln(_aiAnalysis ?? 'قيد التحليل...');
     b.writeln('');
     b.writeln('— تم إنشاؤه بواسطة تطبيق وقفة');
@@ -310,9 +318,11 @@ class _ResultScreenState extends State<ResultScreen>
                           color: Color(0xFF6C63FF), size: 20),
                       const SizedBox(width: 8),
                       Text(
-                          widget.allowCloudAi
+                          _analysisUsedCloud
                               ? 'تحليل الذكاء الاصطناعي السحابي'
-                              : 'تحليل محلي — لم تُرسل بياناتك',
+                              : widget.allowCloudAi
+                                  ? 'تحليل محلي احتياطي — تعذّر الاتصال السحابي'
+                                  : 'تحليل محلي — لم تُرسل بياناتك',
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -637,7 +647,10 @@ class _ForecastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final monthlySave = (salary * 0.1).round();
+    final targetSave = salary * 0.1;
+    final affordableSave = remaining > 0 ? remaining * 0.5 : 0.0;
+    final monthlySave =
+        (targetSave < affordableSave ? targetSave : affordableSave).round();
     final yearSave = monthlySave * 12;
     final yearlyFlow = (remaining * 12).round();
     final flowPositive = yearlyFlow >= 0;
@@ -646,11 +659,18 @@ class _ForecastCard extends StatelessWidget {
     final monthsToDanger = bnplRatio >= 30 ? 0 : ((30 - bnplRatio) / 5).ceil();
 
     final lines = <(IconData, String, Color)>[
-      (
-        Icons.savings_outlined,
-        'لو وفّرت $monthlySave ريال شهرياً، يصير عندك $yearSave ريال بعد سنة.',
-        const Color(0xFF6BCB77),
-      ),
+      if (monthlySave > 0)
+        (
+          Icons.savings_outlined,
+          'لو وفّرت $monthlySave ريال شهرياً، يصير عندك $yearSave ريال بعد سنة.',
+          const Color(0xFF6BCB77),
+        )
+      else
+        (
+          Icons.build_circle_outlined,
+          'ابدأ بإغلاق العجز وخفض المصروف قبل تحديد مبلغ ادخار شهري.',
+          const Color(0xFFFFB347),
+        ),
       (
         flowPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
         flowPositive
