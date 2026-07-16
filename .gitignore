@@ -44,3 +44,6 @@ app.*.map.json
 
 # Secrets (API keys) - never commit
 lib/services/secrets.dart
+
+# Firebase CLI local cache
+.firebase/
