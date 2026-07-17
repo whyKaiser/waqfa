@@ -233,21 +233,29 @@ class _ResultScreenState extends State<ResultScreen>
               ),
               const SizedBox(height: 10),
               Container(
+                width: double.infinity,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.04),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                child:
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   const Icon(Icons.analytics_outlined,
                       size: 14, color: Colors.white38),
                   const SizedBox(width: 6),
-                  const Text('مؤشر وقائي تجريبي — ليس تقييمًا ائتمانيًا',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white54,
-                          fontWeight: FontWeight.w500)),
+                  const Flexible(
+                    child: Text(
+                      'مؤشر وقائي تجريبي — ليس تقييمًا ائتمانيًا',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ]),
               ),
               if (_trend != null && _trend!.worsening) ...[
@@ -326,16 +334,18 @@ class _ResultScreenState extends State<ResultScreen>
                       const Icon(Icons.psychology_outlined,
                           color: Color(0xFF6C63FF), size: 20),
                       const SizedBox(width: 8),
-                      Text(
-                          _analysisUsedCloud
-                              ? 'تحليل الذكاء الاصطناعي السحابي'
-                              : widget.allowCloudAi
-                                  ? 'تحليل محلي احتياطي — تعذّر الاتصال السحابي'
-                                  : 'تحليل محلي — لم تُرسل بياناتك',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: Colors.white38)),
+                      Expanded(
+                        child: Text(
+                            _analysisUsedCloud
+                                ? 'تحليل الذكاء الاصطناعي السحابي'
+                                : widget.allowCloudAi
+                                    ? 'تحليل محلي احتياطي — تعذّر الاتصال السحابي'
+                                    : 'تحليل محلي — لم تُرسل بياناتك',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: Colors.white38)),
+                      ),
                     ]),
                     const SizedBox(height: 12),
                     _loading
@@ -457,8 +467,9 @@ class _RiskGauge extends StatelessWidget {
       ),
       child: Column(children: [
         SizedBox(
-          width: 160,
-          height: 160,
+          key: const ValueKey('risk-gauge'),
+          width: 210,
+          height: 210,
           child: CustomPaint(
             painter: _GaugePainter(
                 value: (riskScore / 100).clamp(0.0, 1.0) * progress,
@@ -467,14 +478,22 @@ class _RiskGauge extends StatelessWidget {
                 child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                  Text('$riskScore/100',
-                      style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: color)),
+                  SizedBox(
+                    width: 158,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('$riskScore/100',
+                          maxLines: 1,
+                          style: TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w700,
+                              color: color)),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
                   Text(label,
                       style: TextStyle(
-                          fontSize: 14, color: color.withOpacity(0.8))),
+                          fontSize: 15, color: color.withOpacity(0.8))),
                 ])),
           ),
         ),
@@ -494,7 +513,8 @@ class _GaugePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 12;
+    const strokeWidth = 16.0;
+    final radius = math.min(size.width, size.height) / 2 - strokeWidth / 2 - 4;
     const startAngle = math.pi * 0.75;
     const sweepAngle = math.pi * 1.5;
     canvas.drawArc(
@@ -505,7 +525,7 @@ class _GaugePainter extends CustomPainter {
         Paint()
           ..color = Colors.white.withOpacity(0.08)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 14
+          ..strokeWidth = strokeWidth
           ..strokeCap = StrokeCap.round);
     canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
@@ -515,12 +535,13 @@ class _GaugePainter extends CustomPainter {
         Paint()
           ..color = color
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 14
+          ..strokeWidth = strokeWidth
           ..strokeCap = StrokeCap.round);
   }
 
   @override
-  bool shouldRepaint(_GaugePainter old) => old.value != value;
+  bool shouldRepaint(_GaugePainter old) =>
+      old.value != value || old.color != color;
 }
 
 class _ExpenseChart extends StatelessWidget {
@@ -628,11 +649,13 @@ class _PreventionSnapshot extends StatelessWidget {
               Icon(Icons.radar_rounded,
                   color: WaqfaColors.amadLavender, size: 20),
               SizedBox(width: 8),
-              Text(
-                'نافذة الوقاية الحالية',
-                style: TextStyle(
-                  color: WaqfaColors.amadSand,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  'نافذة الوقاية الحالية',
+                  style: TextStyle(
+                    color: WaqfaColors.amadSand,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],

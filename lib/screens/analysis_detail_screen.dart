@@ -65,8 +65,9 @@ class AnalysisDetailScreen extends StatelessWidget {
                 ),
                 child: Column(children: [
                   SizedBox(
-                    width: 140,
-                    height: 140,
+                    key: const ValueKey('analysis-history-gauge'),
+                    width: 190,
+                    height: 190,
                     child: CustomPaint(
                       painter: _GaugePainter(
                         value: (record.totalRatio / 100).clamp(0.0, 1.0),
@@ -76,14 +77,22 @@ class AnalysisDetailScreen extends StatelessWidget {
                           child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('${record.totalRatio}%',
-                              style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w700,
-                                  color: _riskColor)),
+                          SizedBox(
+                            width: 140,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('${record.totalRatio}%',
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                      fontSize: 34,
+                                      fontWeight: FontWeight.w700,
+                                      color: _riskColor)),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
                           Text(_riskLabel,
                               style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   color: _riskColor.withOpacity(0.8))),
                         ],
                       )),
@@ -326,7 +335,8 @@ class _GaugePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 10;
+    const strokeWidth = 14.0;
+    final radius = math.min(size.width, size.height) / 2 - strokeWidth / 2 - 4;
     const startAngle = math.pi * 0.75;
     const sweepAngle = math.pi * 1.5;
     canvas.drawArc(
@@ -337,7 +347,7 @@ class _GaugePainter extends CustomPainter {
         Paint()
           ..color = Colors.white.withOpacity(0.08)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 12
+          ..strokeWidth = strokeWidth
           ..strokeCap = StrokeCap.round);
     canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
@@ -347,10 +357,11 @@ class _GaugePainter extends CustomPainter {
         Paint()
           ..color = color
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 12
+          ..strokeWidth = strokeWidth
           ..strokeCap = StrokeCap.round);
   }
 
   @override
-  bool shouldRepaint(_GaugePainter old) => old.value != value;
+  bool shouldRepaint(_GaugePainter old) =>
+      old.value != value || old.color != color;
 }

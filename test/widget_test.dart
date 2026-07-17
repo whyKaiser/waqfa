@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:waqfa/screens/evidence_screen.dart';
+import 'package:waqfa/screens/result_screen.dart';
 import 'package:waqfa/screens/simulator_screen.dart';
+import 'package:waqfa/theme/waqfa_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -65,5 +67,35 @@ void main() {
     expect(find.textContaining('الأرقام أعلاه تمثل وضعك بعد تطبيق الخطة'),
         findsOneWidget);
     expect(find.text('54/100'), findsNWidgets(2));
+  });
+
+  testWidgets('مؤشر نتيجة التحليل واسع ولا يلامس الرقم القوس', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(MaterialApp(
+      theme: WaqfaTheme.dark,
+      home: const ResultScreen(
+        salary: 8000,
+        fixed: 3500,
+        variable: 1500,
+        bnpl: 1800,
+        concern: 'اختبار المؤشر',
+      ),
+    ));
+    await tester.pump();
+
+    final gauge = find.byKey(const ValueKey('risk-gauge'));
+    final score = find.text('54/100');
+    expect(gauge, findsOneWidget);
+    expect(score, findsOneWidget);
+    expect(tester.getSize(gauge), const Size(210, 210));
+
+    final gaugeRect = tester.getRect(gauge);
+    final scoreRect = tester.getRect(score);
+    expect(scoreRect.left - gaugeRect.left, greaterThan(24));
+    expect(gaugeRect.right - scoreRect.right, greaterThan(24));
   });
 }
