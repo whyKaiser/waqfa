@@ -1,0 +1,54 @@
+{
+  "generated_by": "dart run tool/demo_scenario.dart",
+  "scenario": {
+    "salary": 8000,
+    "fixed_expenses": 3500,
+    "variable_expenses": 1500,
+    "current_bnpl": 1800,
+    "proposed_installment": 640
+  },
+  "decision": {
+    "risk_before": 54,
+    "risk_after": 86,
+    "risk_increase": 32,
+    "monthly_remaining_after": 560,
+    "daily_allowance_after": 18.67
+  },
+  "forecast": {
+    "critical_probability_percent": 76,
+    "critical_paths": 55,
+    "total_paths": 72,
+    "financial_fall_day": 23,
+    "median_days_below_reserve": 7,
+    "safe_daily_spend": 42,
+    "decision_cost_90_days": 1920,
+    "expected_band_fall_day": 26,
+    "stressed_band_fall_day": 11
+  },
+  "minimum_intervention": {
+    "adjusted_installment": 160,
+    "installment_reduction": 480,
+    "delay_days": 0,
+    "monthly_variable_cut": 300,
+    "risk_before": 86,
+    "risk_after": 54,
+    "probability_before_percent": 76,
+    "probability_after_percent": 6,
+    "fragile_days_avoided": 5,
+    "recovery_days_before_decision": 0,
+    "recovery_days_before_intervention": 5,
+    "recovery_days_after_intervention": 0
+  },
+  "goal_plan": {
+    "target_amount": 6000,
+    "requested_days": 90,
+    "effective_days": 450,
+    "feasibility": "feasibleWithExtension",
+    "planned_monthly_contribution": 400,
+    "safe_daily_spend": 50,
+    "safety_reserve": 800,
+    "minimum_extension_days": 360,
+    "weekly_steps": 65
+  },
+  "disclosure": "السقوط المالي في النموذج الأولي يعني البقاء تحت احتياطي الأمان 3 أيام متتالية. النتائج احتمالات محاكاة وليست ضمانًا أو تعثرًا أو تقييمًا ائتمانيًا."
+}

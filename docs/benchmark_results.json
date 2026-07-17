@@ -1,0 +1,58 @@
+{
+  "seed": 20260716,
+  "alert_threshold": 45,
+  "scope": "synthetic_90_day_scenarios_product_risk_engine",
+  "total_scenarios": 100,
+  "critical_scenarios": 47,
+  "non_critical_scenarios": 53,
+  "alerts": 75,
+  "confusion_matrix": {
+    "true_positive": 47,
+    "false_positive": 28,
+    "false_negative": 0,
+    "true_negative": 25
+  },
+  "critical_recall": 1.0,
+  "false_positive_rate": 0.5283018867924528,
+  "median_lead_time_days": 6.0,
+  "mean_risk_reduction_points_if_installment_halved": 13.106666666666667,
+  "critical_outcomes_avoided_if_installment_halved": 0.1702127659574468,
+  "archetype_breakdown": {
+    "stable": {
+      "total": 20,
+      "critical": 0,
+      "alerts": 0,
+      "true_positive": 0,
+      "false_positive": 0
+    },
+    "bnplStack": {
+      "total": 20,
+      "critical": 6,
+      "alerts": 20,
+      "true_positive": 6,
+      "false_positive": 14
+    },
+    "timingSqueeze": {
+      "total": 20,
+      "critical": 20,
+      "alerts": 20,
+      "true_positive": 20,
+      "false_positive": 0
+    },
+    "variableIncome": {
+      "total": 20,
+      "critical": 6,
+      "alerts": 17,
+      "true_positive": 6,
+      "false_positive": 11
+    },
+    "shockSensitive": {
+      "total": 20,
+      "critical": 15,
+      "alerts": 18,
+      "true_positive": 15,
+      "false_positive": 3
+    }
+  },
+  "disclosure": "النتائج تخص 100 سيناريو اصطناعي وتختبر نفس محرك الدرجة المستخدم في وقفة؛ لا تمثل دقة على عملاء حقيقيين أو خفضًا مثبتًا للتعثر."
+}
